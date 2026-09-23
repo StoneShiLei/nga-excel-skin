@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.20
+// @version      1.10.21
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -177,13 +177,14 @@
   CSS += '.sstat{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:0 12px;font:11px "Segoe UI","Microsoft YaHei";color:#fff;background:#217346;}';
   CSS += '.hint{position:absolute;right:16px;bottom:40px;background:#217346;color:#fff;font:12px "Microsoft YaHei";padding:8px 12px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:9;pointer-events:none;opacity:.92;}';
   CSS += '.hint b{color:#fff2cc;}';
-  CSS += '.navrow{height:28px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#fafafa;border-bottom:1px solid #d4d4d4;font:12px "Microsoft YaHei";flex:none;}';
+  CSS += '.navrow{height:28px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#fafafa;border-bottom:1px solid #d4d4d4;font:12px "Microsoft YaHei";flex:none;position:relative;z-index:20;overflow:visible;}';
   CSS += '.navrow .lab{color:#605e5c;}';
   CSS += '.navrow select{height:22px;width:160px;max-width:180px;border:1px solid #d2d0ce;background:#fff;font:12px "Microsoft YaHei";}';
   CSS += '.navrow select.off,.navrow .lab.off,.navrow .subwrap.off{display:none;}';
-  CSS += '.navrow .subwrap{position:relative;display:inline-flex;}';
-  CSS += '#xl-subbtn{height:22px;max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}';
-  CSS += '.subpop{position:absolute;z-index:50;top:24px;left:0;width:220px;max-height:260px;overflow:auto;background:#fff;border:1px solid #c8c6c4;box-shadow:0 6px 16px rgba(0,0,0,.16);padding:4px 8px;}';
+  CSS += '.navrow .subwrap{position:relative;display:inline-flex;flex:none;z-index:40;}';
+  CSS += '#xl-subbtn{appearance:none;-webkit-appearance:none;height:22px;min-width:88px;max-width:168px;padding:0 8px;border:1px solid #8a8886;border-radius:2px;background:#fff;color:#252423;font:12px "Microsoft YaHei";cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}';
+  CSS += '#xl-subbtn:hover{border-color:#217346;}';
+  CSS += '.subpop{position:absolute;z-index:80;top:24px;left:0;width:220px;max-height:260px;overflow:auto;background:#fff;border:1px solid #c8c6c4;box-shadow:0 6px 16px rgba(0,0,0,.16);padding:4px 8px;}';
   CSS += '.subpop.off{display:none;} .subpop label{display:flex;gap:6px;align-items:center;padding:3px 0;cursor:pointer;}';
   CSS += 'table.grid td.pinhead{cursor:pointer;background:#e2efda;color:#185c37;font-weight:600;}';
   CSS += '.navrow .btn[disabled]{opacity:.4;}';
@@ -3489,7 +3490,7 @@
       '<span class="lab">环境</span>',
       '<select id="xl-board"></select>',
       '<span class="lab off" id="xl-sublab">子版</span>',
-      '<span class="subwrap off" id="xl-subwrap"><button type="button" class="btn" id="xl-subbtn">全部</button><div id="xl-subpop" class="subpop off"></div></span>',
+      '<span class="subwrap off" id="xl-subwrap"><button type="button" id="xl-subbtn">全部</button><div id="xl-subpop" class="subpop off"></div></span>',
       '<button type="button" class="btn" data-nav="back">返回列表</button>',
       '<button type="button" class="btn" data-nav="open">打开</button>',
       '<button type="button" class="btn" data-nav="prev">上一页</button>',

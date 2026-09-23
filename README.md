@@ -1,6 +1,6 @@
 # NGA Excel 摸鱼皮肤
 
-桌面浏览器里用的 Tampermonkey 脚本。打开 NGA 时盖上一层 Excel，文件名是 `CW3_Sprint_联调清单_202609.xlsx`。当前版本 **1.10.20**。
+桌面浏览器里用的 Tampermonkey 脚本。打开 NGA 时盖上一层 Excel，文件名是 `CW3_Sprint_联调清单_202609.xlsx`。当前版本 **1.10.21**。
 
 脚本文件：`nga-excel-moyu.user.js`。
 
