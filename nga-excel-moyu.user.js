@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.16
+// @version      1.10.17
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -179,7 +179,8 @@
   CSS += '.hint b{color:#fff2cc;}';
   CSS += '.navrow{height:28px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#fafafa;border-bottom:1px solid #d4d4d4;font:12px "Microsoft YaHei";flex:none;}';
   CSS += '.navrow .lab{color:#605e5c;}';
-  CSS += '.navrow select{height:22px;width:180px;max-width:180px;border:1px solid #d2d0ce;background:#fff;font:12px "Microsoft YaHei";}';
+  CSS += '.navrow select{height:22px;width:160px;max-width:180px;border:1px solid #d2d0ce;background:#fff;font:12px "Microsoft YaHei";}';
+  CSS += '.navrow select.off,.navrow .lab.off{display:none;}';
   CSS += '.navrow .btn[disabled]{opacity:.4;}';
   CSS += '.navrow #xl-title{flex:1;min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#185c37;font-weight:600;}';
   CSS += 'table.grid td a.cella{color:inherit;text-decoration:inherit;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}';
@@ -2166,12 +2167,20 @@
       var tag = '';
       var tm = title.match(/^\[([^\]]+)\]/);
       if (tm) tag = tm[1];
+      var sub = '', subHref = '';
+      if (tr) {
+        var sa = tr.querySelector('span.titleadd2 a, span.titleadd a');
+        if (sa) {
+          sub = subLabel(textOf(sa));
+          subHref = linkHref(sa);
+        }
+      }
       var lock = !!(tr && (tr.querySelector('.lock, .locked, img[alt*="锁"], img[alt*="锁定"]')));
       var digest = !!(tr && tr.querySelector('.digest, img[alt*="精"]'));
       var st = repliesN > 80 ? '联调' : (repliesN > 0 ? '开发中' : '待开发');
       if (/公告|置顶/.test(title) || lock) st = 'Blocked';
       if (digest) st = '已上线';
-      var row = { title: title, href: href, author: author || '-', authorHref: authorHref, uid: uid, tid: tid, replies: repliesN, time: time || '-', status: st, score: titleScore(title, a), tag: tag, lock: lock, digest: digest };
+      var row = { title: title, href: href, author: author || '-', authorHref: authorHref, uid: uid, tid: tid, replies: repliesN, time: time || '-', status: st, score: titleScore(title, a), tag: tag, sub: sub, subHref: subHref, lock: lock, digest: digest };
       if (byTid[tid]) {
         if (row.score > byTid[tid].score) byTid[tid] = row;
         return;
@@ -2187,6 +2196,51 @@
     var rows = [];
     for (var i = 0; i < order.length; i++) rows.push(byTid[order[i]]);
     return rows;
+  }
+  function subLabel(t) {
+    t = String(t || '').replace(/\s+/g, ' ').trim();
+    if (t.length >= 2 && t.charAt(0) === '[' && t.charAt(t.length - 1) === ']') t = t.slice(1, -1).trim();
+    return t;
+  }
+  function scrapeSubs() {
+    var rows = [];
+    var seen = {};
+    var cur = '';
+    try { cur = String(currentFid() || ''); } catch (eCur) {}
+    var ff = qsGet('ff') || '';
+    var parentFid = ff || (cur.charAt(0) === '-' ? cur : '');
+    if (!parentFid) return { rows: rows, parentHref: '', parentFid: '' };
+    function add(title, href, key) {
+      title = String(title || '').replace(/\s+/g, ' ').trim();
+      if (!title || !href || seen[key]) return;
+      if (/^(NGA|登录|注册)$/i.test(title.replace(/\s+/g, ''))) return;
+      if (title.length > 36) title = title.slice(0, 36);
+      seen[key] = 1;
+      rows.push({ title: title, href: href.replace(/#.*$/, ''), key: key });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#b_nav a[href*="thread.php"], a[href*="ff="]'), function (a) {
+      if (a.closest && a.closest('#topicrows, #pagebbtm, .pager, #footer, .topicrow')) return;
+      var href = linkHref(a);
+      if (!/thread\.php/i.test(href)) return;
+      var fidm = href.match(/[?&]fid=(-?\d+)/i);
+      var stm = href.match(/[?&]stid=(\d+)/i);
+      var ffm = href.match(/[?&]ff=(-?\d+)/i);
+      if (fidm && fidm[1] === parentFid && !stm) return;
+      if (ffm && ffm[1] !== parentFid) return;
+      if (!ffm && !(a.closest && a.closest('#b_nav'))) return;
+      var title = textOf(a);
+      if (fidm) add(title, href, 'f' + fidm[1]);
+      else if (stm) add(title, href, 's' + stm[1]);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#topicrows span.titleadd2 a, #topicrows span.titleadd a'), function (a) {
+      var href2 = linkHref(a);
+      var fid2 = href2.match(/[?&]fid=(-?\d+)/i);
+      var st2 = href2.match(/[?&]stid=(\d+)/i);
+      var title2 = subLabel(textOf(a));
+      if (fid2) add(title2, href2, 'f' + fid2[1]);
+      else if (st2) add(title2, href2, 's' + st2[1]);
+    });
+    return { rows: rows, parentHref: originRoot() + '/thread.php?fid=' + encodeURIComponent(parentFid), parentFid: parentFid };
   }
   function scrapeBoards() {
     var rows = [];
@@ -2680,6 +2734,7 @@
     try { parsePageMeta(document.documentElement.innerHTML); } catch (ePm) {}
     var pg = scrapePager();
     state.nav.boards = scrapeBoards();
+    state.nav.subPack = scrapeSubs();
     state.nav.prev = pg.prev;
     state.nav.next = pg.next;
     state.nav.page = currentPageN() || pg.cur || (state.nav.pageMeta && state.nav.pageMeta.page) || 1;
@@ -2758,8 +2813,15 @@
     for (var k = 0; k < list.length; k++) {
       var x = list[k];
       var id = 'CWM-' + (x.tid || String(1000 + k));
-      var mod = x.tag || board || '—';
-      var env = fidNow ? ('fid=' + fidNow) : (stidNow ? ('stid=' + stidNow) : '—');
+      var onUnion = String(fidNow || '').charAt(0) === '-' || !!qsGet('ff');
+      var mod = x.sub || x.tag || (onUnion ? '—' : (board || '—'));
+      var env = '';
+      if (x.subHref) {
+        var ef = String(x.subHref).match(/[?&]fid=(-?\d+)/i);
+        var es = String(x.subHref).match(/[?&]stid=(\d+)/i);
+        env = ef ? ('fid=' + ef[1]) : (es ? ('stid=' + es[1]) : '');
+      }
+      if (!env) env = fidNow ? ('fid=' + fidNow) : (stidNow ? ('stid=' + stidNow) : '—');
       put(g, r, 1, { t: id });
       put(g, r, 2, { t: x.title, link: 1 });
       put(g, r, 3, { t: x.author });
@@ -3181,6 +3243,27 @@
       tlab.textContent = (state.isRead ? (scrapeThreadTitle() || '') : '') + extra;
     }
     lockTitle();
+    var subSel = shadow && shadow.querySelector('#xl-sub');
+    var subLab = shadow && shadow.querySelector('#xl-sublab');
+    var pack = (state.nav && state.nav.subPack) || { rows: [] };
+    var subs = pack.rows || [];
+    if (subSel && subLab) {
+      var showSub = subs.length > 0;
+      subSel.classList.toggle('off', !showSub);
+      subLab.classList.toggle('off', !showSub);
+      if (showSub) {
+        var curFidSub = String(currentFid() || '');
+        var curStSub = String(currentStid() || '');
+        var subHtml = '<option value="' + escapeHtml(pack.parentHref || '') + '">全部</option>';
+        for (var si = 0; si < subs.length; si++) {
+          var picked = '';
+          if (subs[si].key === 'f' + curFidSub && curFidSub !== String(pack.parentFid || '')) picked = ' selected';
+          if (subs[si].key === 's' + curStSub && curStSub) picked = ' selected';
+          subHtml += '<option value="' + escapeHtml(subs[si].href) + '"' + picked + '>' + escapeHtml(subs[si].title) + '</option>';
+        }
+        subSel.innerHTML = subHtml;
+      }
+    }
     var cols = (state.nav && state.nav.collections) || [];
     if (sel && cols.length) {
       var extraOpt = '';
@@ -3331,6 +3414,8 @@
       '<div class="navrow">',
       '<span class="lab">环境</span>',
       '<select id="xl-board"></select>',
+      '<span class="lab off" id="xl-sublab">子版</span>',
+      '<select id="xl-sub" class="off"></select>',
       '<button type="button" class="btn" data-nav="back">返回列表</button>',
       '<button type="button" class="btn" data-nav="open">打开</button>',
       '<button type="button" class="btn" data-nav="prev">上一页</button>',
@@ -3668,6 +3753,12 @@
     if (board) {
       board.addEventListener('change', function () {
         if (board.value) goTo(board.value);
+      });
+    }
+    var subBoard = shadow.querySelector('#xl-sub');
+    if (subBoard) {
+      subBoard.addEventListener('change', function () {
+        if (subBoard.value) goTo(subBoard.value);
       });
     }
     var search = shadow.querySelector('.search');
