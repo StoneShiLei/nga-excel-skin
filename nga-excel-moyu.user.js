@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.19
+// @version      1.10.20
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -180,7 +180,12 @@
   CSS += '.navrow{height:28px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#fafafa;border-bottom:1px solid #d4d4d4;font:12px "Microsoft YaHei";flex:none;}';
   CSS += '.navrow .lab{color:#605e5c;}';
   CSS += '.navrow select{height:22px;width:160px;max-width:180px;border:1px solid #d2d0ce;background:#fff;font:12px "Microsoft YaHei";}';
-  CSS += '.navrow select.off,.navrow .lab.off{display:none;}';
+  CSS += '.navrow select.off,.navrow .lab.off,.navrow .subwrap.off{display:none;}';
+  CSS += '.navrow .subwrap{position:relative;display:inline-flex;}';
+  CSS += '#xl-subbtn{height:22px;max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}';
+  CSS += '.subpop{position:absolute;z-index:50;top:24px;left:0;width:220px;max-height:260px;overflow:auto;background:#fff;border:1px solid #c8c6c4;box-shadow:0 6px 16px rgba(0,0,0,.16);padding:4px 8px;}';
+  CSS += '.subpop.off{display:none;} .subpop label{display:flex;gap:6px;align-items:center;padding:3px 0;cursor:pointer;}';
+  CSS += 'table.grid td.pinhead{cursor:pointer;background:#e2efda;color:#185c37;font-weight:600;}';
   CSS += '.navrow .btn[disabled]{opacity:.4;}';
   CSS += '.navrow #xl-title{flex:1;min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#185c37;font-weight:600;}';
   CSS += 'table.grid td a.cella{color:inherit;text-decoration:inherit;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}';
@@ -868,6 +873,7 @@
     var t = textOf(a);
     if (!isJunkTitle(t)) return t;
     t = (a.getAttribute('title') || '').trim();
+    if (/打开新窗口/.test(t)) t = '';
     if (!isJunkTitle(t)) return t;
     var box = a.closest && a.closest('td, .c3');
     if (box) {
@@ -2141,7 +2147,7 @@
       }
       var href = linkHref(a);
       if (!href || !/tid=\d+/.test(href)) return;
-      if (a.classList && (a.classList.contains('author') || a.classList.contains('replier') || a.classList.contains('replydate'))) return;
+      if (a.classList && (a.classList.contains('author') || a.classList.contains('replier') || a.classList.contains('replydate') || a.classList.contains('replies'))) return;
       if (a.closest && a.closest('#pagebbtm, .pager, #offline_notice, #mainmenu, #bgtop, #footer, #custombg')) return;
       var title = linkTitle(a);
       if (!title) return;
@@ -2211,7 +2217,7 @@
       var tid = tidKey(href);
       if (!tid || seen[tid]) return;
       var title = textOf(a).replace(/https?:\/\/\S+/gi, ' ').replace(/\s+/g, ' ').trim();
-      if (isJunkTitle(title)) return;
+      if (isJunkTitle(title) || /打开新窗口/.test(title)) return;
       if (title.length > 80) title = title.slice(0, 80);
       seen[tid] = 1;
       rows.push({ title: title, href: href, tid: tid });
@@ -2831,15 +2837,25 @@
     var board = boardName();
     var fidNow = currentFid();
     var stidNow = currentStid();
+    var packNow = (state.nav && state.nav.subPack) || {};
+    if (state.subParent !== (packNow.parentFid || '')) {
+      state.subParent = packNow.parentFid || '';
+      state.subPick = {};
+    }
     var pins = scrapeHeaderPosts();
     var pinTids = {};
+    var picks = [];
+    var pickMap = state.subPick || {};
+    for (var pk in pickMap) if (pickMap.hasOwnProperty(pk) && pickMap[pk]) picks.push(pk);
     if (pins.length) {
-      put(g, r, 1, { t: '版头', k: 'head' });
-      put(g, r, 2, { t: '导读 ' + pins.length + ' 条，双击或 Enter 打开', k: 'sub' });
+      var pinsOpen = state.pinsOpen !== false;
+      put(g, r, 1, { t: (pinsOpen ? '▾' : '▸') + ' 版头', k: 'pinhead' });
+      put(g, r, 2, { t: '导读 ' + pins.length + ' 条，单击' + (pinsOpen ? '收起' : '展开'), k: 'pinhead' });
       r++;
       for (var pi = 0; pi < pins.length; pi++) {
         var pin = pins[pi];
         pinTids[pin.tid] = 1;
+        if (!pinsOpen) continue;
         put(g, r, 1, { t: 'CWM-' + pin.tid });
         put(g, r, 2, { t: pin.title, link: 1 });
         put(g, r, 6, { t: '版头', k: 'warn' });
@@ -2853,6 +2869,7 @@
     for (var k = 0; k < list.length; k++) {
       var x = list[k];
       if (x.tid && pinTids[x.tid]) continue;
+      if (picks.length && picks.indexOf(subLabel(x.sub || '')) < 0) continue;
       var id = 'CWM-' + (x.tid || String(1000 + k));
       var onUnion = String(fidNow || '').charAt(0) === '-' || !!qsGet('ff');
       var mod = x.sub || x.tag || (onUnion ? '—' : (board || '—'));
@@ -3284,25 +3301,41 @@
       tlab.textContent = (state.isRead ? (scrapeThreadTitle() || '') : '') + extra;
     }
     lockTitle();
-    var subSel = shadow && shadow.querySelector('#xl-sub');
+    var subWrap = shadow && shadow.querySelector('#xl-subwrap');
     var subLab = shadow && shadow.querySelector('#xl-sublab');
+    var subBtn = shadow && shadow.querySelector('#xl-subbtn');
+    var subPop = shadow && shadow.querySelector('#xl-subpop');
     var pack = (state.nav && state.nav.subPack) || { rows: [] };
     var subs = pack.rows || [];
-    if (subSel && subLab) {
-      var showSub = subs.length > 0;
-      subSel.classList.toggle('off', !showSub);
+    if (subWrap && subLab && subBtn && subPop) {
+      var showSub = subs.length > 0 && !state.isRead;
+      subWrap.classList.toggle('off', !showSub);
       subLab.classList.toggle('off', !showSub);
       if (showSub) {
-        var curFidSub = String(currentFid() || '');
-        var curStSub = String(currentStid() || '');
-        var subHtml = '<option value="' + escapeHtml(pack.parentHref || '') + '">全部</option>';
-        for (var si = 0; si < subs.length; si++) {
-          var picked = '';
-          if (subs[si].key === 'f' + curFidSub && curFidSub !== String(pack.parentFid || '')) picked = ' selected';
-          if (subs[si].key === 's' + curStSub && curStSub) picked = ' selected';
-          subHtml += '<option value="' + escapeHtml(subs[si].href) + '"' + picked + '>' + escapeHtml(subs[si].title) + '</option>';
+        if (state.subParent !== (pack.parentFid || '')) {
+          state.subParent = pack.parentFid || '';
+          state.subPick = {};
         }
-        subSel.innerHTML = subHtml;
+        var names = [];
+        var seenSub = {};
+        for (var si = 0; si < subs.length; si++) {
+          var nm = subLabel(subs[si].title);
+          if (!nm || seenSub[nm]) continue;
+          seenSub[nm] = 1;
+          names.push(nm);
+        }
+        var pick = state.subPick || {};
+        var chosen = [];
+        for (var ni = 0; ni < names.length; ni++) {
+          if (pick[names[ni]]) chosen.push(names[ni]);
+        }
+        var subHtml = '<label><input type="checkbox" data-sub=""' + (chosen.length ? '' : ' checked') + '> 全部</label>';
+        for (var nj = 0; nj < names.length; nj++) {
+          subHtml += '<label><input type="checkbox" data-sub="' + escapeHtml(names[nj]) + '"' + (pick[names[nj]] ? ' checked' : '') + '> ' + escapeHtml(names[nj]) + '</label>';
+        }
+        subPop.innerHTML = subHtml;
+        subPop.classList.toggle('off', !state.subPop);
+        subBtn.textContent = chosen.length ? (chosen[0] + (chosen.length > 1 ? ' +' + (chosen.length - 1) : '')) : '全部';
       }
     }
     var cols = (state.nav && state.nav.collections) || [];
@@ -3456,7 +3489,7 @@
       '<span class="lab">环境</span>',
       '<select id="xl-board"></select>',
       '<span class="lab off" id="xl-sublab">子版</span>',
-      '<select id="xl-sub" class="off"></select>',
+      '<span class="subwrap off" id="xl-subwrap"><button type="button" class="btn" id="xl-subbtn">全部</button><div id="xl-subpop" class="subpop off"></div></span>',
       '<button type="button" class="btn" data-nav="back">返回列表</button>',
       '<button type="button" class="btn" data-nav="open">打开</button>',
       '<button type="button" class="btn" data-nav="prev">上一页</button>',
@@ -3570,9 +3603,36 @@
       if (cella) {
         if (e.ctrlKey || e.metaKey) return;
         e.preventDefault();
+        var pinFromLink = t.closest('td.pinhead');
+        if (pinFromLink) {
+          if (e.detail > 1) return;
+          state.pinsOpen = state.pinsOpen === false;
+          render();
+          return;
+        }
         var ctd = t.closest('td[data-r]');
         if (ctd) selectCell(+ctd.getAttribute('data-r'), +ctd.getAttribute('data-c'));
         return;
+      }
+      var pinTd = t.closest('td.pinhead');
+      if (pinTd) {
+        e.preventDefault();
+        if (e.detail > 1) return;
+        state.pinsOpen = state.pinsOpen === false;
+        render();
+        return;
+      }
+      if (t.closest('#xl-subbtn')) {
+        e.preventDefault();
+        state.subPop = !state.subPop;
+        var pop = shadow.querySelector('#xl-subpop');
+        if (pop) pop.classList.toggle('off', !state.subPop);
+        return;
+      }
+      if (!t.closest('#xl-subwrap')) {
+        state.subPop = false;
+        var pop2 = shadow.querySelector('#xl-subpop');
+        if (pop2) pop2.classList.add('off');
       }
       var pa = t.closest('.pane a');
       if (pa && pa.classList.contains('imglink')) {
@@ -3796,10 +3856,18 @@
         if (board.value) goTo(board.value);
       });
     }
-    var subBoard = shadow.querySelector('#xl-sub');
-    if (subBoard) {
-      subBoard.addEventListener('change', function () {
-        if (subBoard.value) goTo(subBoard.value);
+    var subPop = shadow.querySelector('#xl-subpop');
+    if (subPop) {
+      subPop.addEventListener('change', function (ev) {
+        var inp = ev.target;
+        if (!inp || inp.type !== 'checkbox') return;
+        var name = inp.getAttribute('data-sub') || '';
+        state.subPick = state.subPick || {};
+        if (!name) state.subPick = {};
+        else if (inp.checked) state.subPick[name] = 1;
+        else delete state.subPick[name];
+        state.subPop = true;
+        render();
       });
     }
     var search = shadow.querySelector('.search');
