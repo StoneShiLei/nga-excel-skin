@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.21
+// @version      1.10.22
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -1595,11 +1595,36 @@
     }
     return null;
   }
+  function scrapeNgaNotice() {
+    var html = (document.body && document.body.innerHTML) || '';
+    var re = /<!--msginfostart-->([\s\S]*?)<!--msginfoend-->/g;
+    var m;
+    var first = '';
+    while ((m = re.exec(html))) {
+      var tmp = document.createElement('div');
+      tmp.innerHTML = m[1];
+      var s = (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+      s = s.replace(/\[恢复无法查看的主题点此\]/g, '').replace(/\[查看所需的权限\/条件\]/g, '').trim();
+      if (!s) continue;
+      if (!first) first = s;
+    }
+    if (first) return first.slice(0, 80);
+    var title = (document.title || '').replace(/\s*NGA.*$/i, '').trim();
+    if (/找不到主题|审核未通过|权限不足|已被删除|被删除|被隐藏|超过限制/.test(title)) return title.slice(0, 80);
+    return '';
+  }
+  function isTopicBlocked(msg) {
+    return /审核未通过|审核中|权限不足|已被删除|被删除|找不到主题|主题不存在|被隐藏|设为隐藏|超过限制|被屏蔽|被锁|nuke/i.test(msg || '');
+  }
   function isLoginWall() {
     if (!document.body) return false;
     if (document.querySelector('a.topic, [id^="postcontent"]')) return false;
+    var msg = scrapeNgaNotice();
+    if (isTopicBlocked(msg)) return false;
+    if (findLoginForm()) return true;
     var t = document.body.innerText || '';
-    return /未登录|请先登录|查看所需的权限/.test(t);
+    if (isTopicBlocked(t)) return false;
+    return /未登录|请先登录|你可能需要登录/.test(t);
   }
   function needsRule() {
     if (!document.body) return false;
@@ -2793,7 +2818,11 @@
       preview[2] = { title: '返回板块', body: '回到 thread.php 列表' };
       var hs = ['#','Author','Time','Comment','Type','Source'];
       for (var i = 0; i < hs.length; i++) put(g, 3, 1 + i, { t: hs[i], k: 'head' });
-      if (!posts.length) put(g, 4, 4, { t: '帖子仍在加载，稍后会自动刷新' });
+      if (!posts.length) {
+        var notice = scrapeNgaNotice();
+        put(g, 4, 4, { t: notice || '帖子仍在加载，稍后会自动刷新', k: notice ? 'warn' : '' });
+        if (notice) preview[4] = { title: notice, body: notice };
+      }
       for (var p = 0; p < posts.length; p++) {
         var row = 4 + p;
         var it = posts[p];
