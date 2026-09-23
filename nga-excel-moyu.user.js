@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.18
+// @version      1.10.19
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -2200,6 +2200,24 @@
     for (var i = 0; i < order.length; i++) rows.push(byTid[order[i]]);
     return rows;
   }
+  function scrapeHeaderPosts() {
+    var root = document.querySelector('#toptopics');
+    if (!root) return [];
+    var rows = [];
+    var seen = {};
+    Array.prototype.forEach.call(root.querySelectorAll('a[href*="tid="]'), function (a) {
+      if (a.closest && a.closest('.pager')) return;
+      var href = linkHref(a);
+      var tid = tidKey(href);
+      if (!tid || seen[tid]) return;
+      var title = textOf(a).replace(/https?:\/\/\S+/gi, ' ').replace(/\s+/g, ' ').trim();
+      if (isJunkTitle(title)) return;
+      if (title.length > 80) title = title.slice(0, 80);
+      seen[tid] = 1;
+      rows.push({ title: title, href: href, tid: tid });
+    });
+    return rows;
+  }
   function subLabel(t) {
     t = String(t || '').replace(/\s+/g, ' ').trim();
     if (t.length >= 2 && t.charAt(0) === '[' && t.charAt(t.length - 1) === ']') t = t.slice(1, -1).trim();
@@ -2813,8 +2831,28 @@
     var board = boardName();
     var fidNow = currentFid();
     var stidNow = currentStid();
+    var pins = scrapeHeaderPosts();
+    var pinTids = {};
+    if (pins.length) {
+      put(g, r, 1, { t: '版头', k: 'head' });
+      put(g, r, 2, { t: '导读 ' + pins.length + ' 条，双击或 Enter 打开', k: 'sub' });
+      r++;
+      for (var pi = 0; pi < pins.length; pi++) {
+        var pin = pins[pi];
+        pinTids[pin.tid] = 1;
+        put(g, r, 1, { t: 'CWM-' + pin.tid });
+        put(g, r, 2, { t: pin.title, link: 1 });
+        put(g, r, 6, { t: '版头', k: 'warn' });
+        put(g, r, 7, { t: '导读' });
+        put(g, r, 8, { t: fidNow ? ('fid=' + fidNow) : '—' });
+        hrefs[r] = pin.href;
+        preview[r] = { title: '版头 · ' + pin.title, body: '版头导读\ntid: ' + pin.tid + '\n' + pin.title, tid: pin.tid };
+        r++;
+      }
+    }
     for (var k = 0; k < list.length; k++) {
       var x = list[k];
+      if (x.tid && pinTids[x.tid]) continue;
       var id = 'CWM-' + (x.tid || String(1000 + k));
       var onUnion = String(fidNow || '').charAt(0) === '-' || !!qsGet('ff');
       var mod = x.sub || x.tag || (onUnion ? '—' : (board || '—'));
