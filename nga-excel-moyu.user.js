@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.22
+// @version      1.10.23
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -85,6 +85,7 @@
   var LS_PANE = 'nga-xl-pane';
   var LS_COLORD = 'nga-xl-colord';
   var LS_DRAFT = 'nga-xl-draft';
+  var LS_SUB = 'nga-xl-subpick';
 
   var CSS = '';
   CSS += ':host{font-family:"Segoe UI","Microsoft YaHei",DengXian,sans-serif;color:#252423;display:block;width:100%;height:100%;}';
@@ -276,6 +277,49 @@
       var ls = pageLS();
       if (ls) ls.setItem(key, s);
     } catch (eL) {}
+  }
+  var subPickStore = null;
+  function readSubStore() {
+    if (subPickStore) return subPickStore;
+    var cands = storeGet(LS_SUB);
+    var best = {};
+    var i, raw, o;
+    for (i = 0; i < cands.length; i++) {
+      raw = cands[i];
+      if (raw == null || raw === '') continue;
+      try {
+        o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (o && typeof o === 'object') best = o;
+      } catch (eS) {}
+    }
+    subPickStore = best;
+    return best;
+  }
+  function copyPick(src) {
+    var out = {};
+    var k;
+    src = src || {};
+    for (k in src) if (src.hasOwnProperty(k) && src[k]) out[k] = 1;
+    return out;
+  }
+  function useSubPick(fid) {
+    fid = fid || '';
+    if (!fid || state.subParent === fid) return;
+    state.subParent = fid;
+    state.subPick = copyPick(readSubStore()[fid]);
+  }
+  function saveSubPick() {
+    var fid = state.subParent || '';
+    if (!fid) return;
+    var map = readSubStore();
+    var pick = copyPick(state.subPick);
+    var n = 0;
+    var k;
+    for (k in pick) if (pick.hasOwnProperty(k)) n++;
+    if (n) map[fid] = pick;
+    else delete map[fid];
+    subPickStore = map;
+    storeSet(LS_SUB, map);
   }
   function parseColsRaw(raw) {
     if (raw == null || raw === '') return null;
@@ -2868,17 +2912,14 @@
     var fidNow = currentFid();
     var stidNow = currentStid();
     var packNow = (state.nav && state.nav.subPack) || {};
-    if (state.subParent !== (packNow.parentFid || '')) {
-      state.subParent = packNow.parentFid || '';
-      state.subPick = {};
-    }
+    useSubPick(packNow.parentFid || '');
     var pins = scrapeHeaderPosts();
     var pinTids = {};
     var picks = [];
-    var pickMap = state.subPick || {};
+    var pickMap = (packNow.parentFid && state.subParent === packNow.parentFid) ? (state.subPick || {}) : {};
     for (var pk in pickMap) if (pickMap.hasOwnProperty(pk) && pickMap[pk]) picks.push(pk);
     if (pins.length) {
-      var pinsOpen = state.pinsOpen !== false;
+      var pinsOpen = state.pinsOpen === true;
       put(g, r, 1, { t: (pinsOpen ? '▾' : '▸') + ' 版头', k: 'pinhead' });
       put(g, r, 2, { t: '导读 ' + pins.length + ' 条，单击' + (pinsOpen ? '收起' : '展开'), k: 'pinhead' });
       r++;
@@ -3342,10 +3383,7 @@
       subWrap.classList.toggle('off', !showSub);
       subLab.classList.toggle('off', !showSub);
       if (showSub) {
-        if (state.subParent !== (pack.parentFid || '')) {
-          state.subParent = pack.parentFid || '';
-          state.subPick = {};
-        }
+        useSubPick(pack.parentFid || '');
         var names = [];
         var seenSub = {};
         for (var si = 0; si < subs.length; si++) {
@@ -3636,7 +3674,7 @@
         var pinFromLink = t.closest('td.pinhead');
         if (pinFromLink) {
           if (e.detail > 1) return;
-          state.pinsOpen = state.pinsOpen === false;
+          state.pinsOpen = state.pinsOpen !== true;
           render();
           return;
         }
@@ -3648,7 +3686,7 @@
       if (pinTd) {
         e.preventDefault();
         if (e.detail > 1) return;
-        state.pinsOpen = state.pinsOpen === false;
+        state.pinsOpen = state.pinsOpen !== true;
         render();
         return;
       }
@@ -3897,6 +3935,7 @@
         else if (inp.checked) state.subPick[name] = 1;
         else delete state.subPick[name];
         state.subPop = true;
+        saveSubPick();
         render();
       });
     }
