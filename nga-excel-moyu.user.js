@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.25
+// @version      1.10.26
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -1364,6 +1364,59 @@
       state.feed.loading = false;
     });
   }
+  function resetListFeedIfNeeded() {
+    var key = location.pathname + (location.search || '').replace(/#.*$/, '');
+    if (state.listKey !== key) {
+      state.listKey = key;
+      state.listFeed = { rows: [], seen: {}, next: '', loading: false, done: false, tried: {} };
+    }
+    if (!state.listFeed) state.listFeed = { rows: [], seen: {}, next: '', loading: false, done: false, tried: {} };
+  }
+  function mergeList(rows) {
+    resetListFeedIfNeeded();
+    var i, row;
+    for (i = 0; i < (rows || []).length; i++) {
+      row = rows[i];
+      if (!row || !row.tid || state.listFeed.seen[row.tid]) continue;
+      state.listFeed.seen[row.tid] = 1;
+      state.listFeed.rows.push(row);
+    }
+  }
+  function loadMoreList() {
+    if (state.mode === 'off' || state.sheet !== 'tk' || state.isRead) return;
+    resetListFeedIfNeeded();
+    if (state.listFeed.loading || state.listFeed.done) return;
+    var next = state.listFeed.next || (state.nav && state.nav.next) || '';
+    if (!next) {
+      var cur = (state.nav && state.nav.page) || currentPageN();
+      next = pageHrefFrom(location.href, cur + 1);
+    }
+    if (!next || next === location.href) { state.listFeed.done = true; return; }
+    state.listFeed.tried = state.listFeed.tried || {};
+    if (state.listFeed.tried[next]) { state.listFeed.done = true; return; }
+    state.listFeed.tried[next] = 1;
+    state.listFeed.loading = true;
+    httpReq({ url: next, html: 1 }).then(function (r) {
+      var doc = new DOMParser().parseFromString(r.text, 'text/html');
+      var rows = scrapeList(doc);
+      var before = state.listFeed.rows.length;
+      mergeList(rows);
+      var pg = scrapePager(doc, next);
+      state.listFeed.next = pg.next || '';
+      if (!state.listFeed.next && pg.max && ((state.nav && state.nav.page) || currentPageN()) >= pg.max) state.listFeed.done = true;
+      if (state.listFeed.rows.length === before) state.listFeed.done = true;
+      var wrap = shadow && shadow.querySelector('.gridwrap');
+      var sl = wrap ? wrap.scrollLeft : 0;
+      var st = wrap ? wrap.scrollTop : 0;
+      render();
+      wrap = shadow && shadow.querySelector('.gridwrap');
+      if (wrap) { wrap.scrollLeft = sl; wrap.scrollTop = st; }
+    }).catch(function () {
+      state.listFeed.done = true;
+    }).then(function () {
+      state.listFeed.loading = false;
+    });
+  }
   function isFloorLabel(s) {
     s = String(s || '').replace(/\s+/g, '');
     return /^#?\d+$/.test(s);
@@ -2208,7 +2261,8 @@
     if (!m) return abs || shown;
     return m[2] + '-' + m[3] + (m[4] ? ' ' + m[4] : '');
   }
-  function scrapeList() {
+  function scrapeList(root) {
+    root = root || document;
     var byTid = {};
     var order = [];
     function add(a) {
@@ -2267,10 +2321,10 @@
       byTid[tid] = row;
       order.push(tid);
     }
-    Array.prototype.forEach.call(document.querySelectorAll('a.topic'), add);
-    Array.prototype.forEach.call(document.querySelectorAll('#m_threads a[href*="tid="], #topicrows a[href*="tid="], #toptopics a[href*="tid="], table.forumbox a[href*="tid="]'), add);
+    Array.prototype.forEach.call(root.querySelectorAll('a.topic'), add);
+    Array.prototype.forEach.call(root.querySelectorAll('#m_threads a[href*="tid="], #topicrows a[href*="tid="], #toptopics a[href*="tid="], table.forumbox a[href*="tid="]'), add);
     if (!order.length) {
-      Array.prototype.forEach.call(document.querySelectorAll('a[href*="tid="]'), add);
+      Array.prototype.forEach.call(root.querySelectorAll('a[href*="tid="]'), add);
     }
     var rows = [];
     for (var i = 0; i < order.length; i++) rows.push(byTid[order[i]]);
@@ -2465,6 +2519,12 @@
     if (!root) return list;
     Array.prototype.forEach.call(root.querySelectorAll('img'), function (img) {
       addUrl(list, seen, img.getAttribute('data-srclazy') || img.getAttribute('data-srcorg') || img.getAttribute('orgSrc') || img.getAttribute('orgsrc') || img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('_src') || img.getAttribute('src'));
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('video'), function (v) {
+      var src = v.getAttribute('src') || '';
+      var poster = v.getAttribute('poster') || '';
+      if (/\.(jpg|jpeg|png|gif|webp|bmp)(\?|#|$)/i.test(src)) addUrl(list, seen, src);
+      else addUrl(list, seen, poster || src);
     });
     Array.prototype.forEach.call(root.querySelectorAll('a[href]'), function (a) {
       var u = a.getAttribute('href') || '';
@@ -2884,6 +2944,12 @@
     }
     var boards = state.nav.boards || [];
     var list = scrapeList();
+    if (!state.isRead) {
+      resetListFeedIfNeeded();
+      mergeList(list);
+      if (!state.listFeed.next && state.nav && state.nav.next) state.listFeed.next = state.nav.next;
+      list = state.listFeed.rows;
+    }
     put(g, 1, 1, { t: '工单看板', k: 'title' });
     put(g, 2, 1, { t: '单击选中，双击或 Enter /「打开」。换板块用上方「环境」。', k: 'sub' });
     var h2 = ['CWM','需求说明','Assignee','评论','Updated','Status','模块','环境'];
@@ -4007,7 +4073,10 @@
     if (wrap && !wrap.getAttribute('data-xl-scroll')) {
       wrap.setAttribute('data-xl-scroll', '1');
       wrap.addEventListener('scroll', function () {
-        if (wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 140) loadMorePosts();
+        if (wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 140) {
+          if (state.isRead) loadMorePosts();
+          else loadMoreList();
+        }
       });
     }
     window.addEventListener('resize', function () {
