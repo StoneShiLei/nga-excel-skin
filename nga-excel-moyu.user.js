@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.23
+// @version      1.10.24
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -2940,10 +2940,11 @@
     for (var k = 0; k < list.length; k++) {
       var x = list[k];
       if (x.tid && pinTids[x.tid]) continue;
-      if (picks.length && picks.indexOf(subLabel(x.sub || '')) < 0) continue;
+      var subName = subLabel(x.sub || '');
+      if (picks.length && subName && picks.indexOf(subName) < 0) continue;
       var id = 'CWM-' + (x.tid || String(1000 + k));
       var onUnion = String(fidNow || '').charAt(0) === '-' || !!qsGet('ff');
-      var mod = x.sub || x.tag || (onUnion ? '—' : (board || '—'));
+      var mod = subName || (onUnion ? '本版' : (x.tag || board || '—'));
       var env = '';
       if (x.subHref) {
         var ef = String(x.subHref).match(/[?&]fid=(-?\d+)/i);
