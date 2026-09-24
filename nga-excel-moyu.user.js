@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.24
+// @version      1.10.25
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -90,7 +90,7 @@
   var CSS = '';
   CSS += ':host{font-family:"Segoe UI","Microsoft YaHei",DengXian,sans-serif;color:#252423;display:block;width:100%;height:100%;}';
   CSS += '*{box-sizing:border-box;}';
-  CSS += '.app{display:flex;flex-direction:column;width:100%;height:100%;background:#fff;user-select:none;position:relative;}';
+  CSS += '.app{display:flex;flex-direction:column;width:100%;height:100%;background:#fff;user-select:none;position:relative;overflow:hidden;}';
   CSS += '.appbar{height:36px;display:flex;align-items:center;gap:8px;padding:0 10px;background:#fff;border-bottom:1px solid #e1dfdd;}';
   CSS += '.icon{width:20px;height:20px;border-radius:3px;background:#185c37;color:#fff;font:700 12px/20px Arial;text-align:center;flex:none;}';
   CSS += '.filebtn{font:12px "Microsoft YaHei";padding:2px 8px;border-radius:3px;}';
@@ -120,7 +120,7 @@
   CSS += '.fx{width:28px;font:italic 13px "Times New Roman";color:#217346;display:flex;align-items:center;justify-content:center;border-right:1px solid #d4d4d4;}';
   CSS += '.fxinput{flex:1;font:12px Calibri,DengXian,"Microsoft YaHei";padding:0 8px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;user-select:text;}';
   CSS += '.main{flex:1;display:flex;min-height:0;background:#fff;}';
-  CSS += '.gridwrap{flex:1;min-width:0;overflow:auto;position:relative;background:#fff;}';
+  CSS += '.gridwrap{flex:1;min-width:0;overflow:auto;position:relative;background:#fff;overscroll-behavior:contain;}';
   CSS += 'table.grid{border-collapse:collapse;table-layout:fixed;font:12px Calibri,DengXian,"Microsoft YaHei";}';
   CSS += 'table.grid th,table.grid td{border:1px solid #d0d0d0;height:18px;padding:0 4px;overflow:hidden;min-width:0;max-width:0;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}';
   CSS += 'table.grid th{background:#f8f8f8;font:11px "Segoe UI";color:#333;text-align:center;position:sticky;top:0;z-index:2;}';
@@ -143,7 +143,7 @@
   CSS += '.pane{width:400px;min-width:180px;flex:none;position:relative;border-left:1px solid #d4d4d4;display:flex;flex-direction:column;background:#fff;}';
   CSS += '.pane.hide{display:none;} .pane-resizer{position:absolute;left:-3px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:6;} .pane-resizer:hover{background:rgba(33,115,70,.35);}';
   CSS += '.pane h3{margin:0;height:28px;display:flex;align-items:center;padding:0 10px;font:12px "Microsoft YaHei";background:#f3f2f1;border-bottom:1px solid #e1dfdd;color:#185c37;}';
-  CSS += '.pane .body{flex:1;overflow:auto;padding:10px 12px;font:13px Calibri,DengXian,"Microsoft YaHei";line-height:1.55;user-select:text;white-space:normal;word-break:break-word;color:#252423;}';
+  CSS += '.pane .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:10px 12px;font:13px Calibri,DengXian,"Microsoft YaHei";line-height:1.55;user-select:text;white-space:normal;word-break:break-word;color:#252423;}';
   CSS += '.pane .body .qbox{border-left:3px solid #a19f9d;background:#f3f2f1;padding:6px 8px;margin:0 0 10px;color:#605e5c;}';
   CSS += '.pane .body .rbox{border-left:3px solid #217346;padding:0 0 0 8px;margin:0 0 10px;}';
   CSS += '.pane .body .qlab,.pane .body .rlab{font:11px "Microsoft YaHei";color:#217346;margin:0 0 4px;}';
@@ -3469,6 +3469,7 @@
     if (state.mode === 'off') {
       host.style.display = 'none';
       document.documentElement.classList.remove('nga-xl-pending', 'nga-xl-on');
+      document.documentElement.style.overflow = '';
       document.body && (document.body.style.overflow = '');
       restoreTitle();
       restoreFavicon();
@@ -3476,6 +3477,7 @@
       host.style.display = 'block';
       document.documentElement.classList.add('nga-xl-on');
       document.documentElement.classList.remove('nga-xl-pending');
+      document.documentElement.style.overflow = 'hidden';
       if (document.body) document.body.style.overflow = 'hidden';
       setFavicon();
       if (state.mode === 'panic') state.sheet = 'pl';
@@ -3514,7 +3516,7 @@
     savedTitle = document.title;
     host = document.createElement('div');
     host.id = 'nga-xl-host';
-    host.setAttribute('style', 'position:fixed!important;left:0!important;top:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100vh!important;z-index:2147483646!important;margin:0!important;padding:0!important;background:#fff!important;');
+    host.setAttribute('style', 'position:fixed!important;left:0!important;top:0!important;right:0!important;bottom:0!important;width:100%!important;height:100%!important;overflow:hidden!important;z-index:2147483646!important;margin:0!important;padding:0!important;background:#fff!important;');
     shadow = host.attachShadow({ mode: 'open' });
     var st = document.createElement('style');
     st.textContent = CSS;
@@ -4139,7 +4141,7 @@
     if ((localStorage.getItem(LS_MODE) || 'skin') === 'off') return;
     document.documentElement.classList.add('nga-xl-pending');
     bootStyle = document.createElement('style');
-    bootStyle.textContent = 'html.nga-xl-pending,html.nga-xl-pending body{background:#fff!important;opacity:0!important;}html.nga-xl-on,html.nga-xl-on body{opacity:1!important;}html.nga-xl-on body{overflow:hidden!important;}';
+    bootStyle.textContent = 'html.nga-xl-pending,html.nga-xl-pending body{background:#fff!important;opacity:0!important;}html.nga-xl-on,html.nga-xl-on body{opacity:1!important;overflow:hidden!important;height:100%!important;margin:0!important;}';
     (document.head || document.documentElement).appendChild(bootStyle);
   }
 
