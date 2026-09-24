@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.28
+// @version      1.10.29
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -83,6 +83,7 @@
   var LS_MODE = 'nga-xl-mode';
   var LS_COLS = 'nga-xl-cols';
   var LS_PANE = 'nga-xl-pane';
+  var LS_MEDIA = 'nga-xl-media';
   var LS_COLORD = 'nga-xl-colord';
   var LS_DRAFT = 'nga-xl-draft';
   var LS_SUB = 'nga-xl-subpick';
@@ -149,7 +150,8 @@
   CSS += '.pane .body .qlab,.pane .body .rlab{font:11px "Microsoft YaHei";color:#217346;margin:0 0 4px;}';
   CSS += '.pane .body .qtxt,.pane .body .rtxt{white-space:pre-wrap;word-break:break-word;}';
   CSS += '.pane .body .imgls a{display:block;margin:2px 0;}';
-  CSS += '.pane .body .imgls .xlmedia{display:block;max-width:100%;max-height:360px;margin:6px 0;background:#111;}';
+  CSS += '.pane .body .imgls .xlmedia{display:block;width:var(--xl-m,76px);height:auto;max-width:100%;margin:6px 0;background:#111;}';
+  CSS += '.pane .body .mediasize{height:10px;margin:2px 0 8px;cursor:ns-resize;background:#d2d0ce;border-radius:2px;} .pane .body .mediasize:hover,.pane .body .mediasize.on{background:#217346;}';
   CSS += '.pane .body .votes{display:flex;gap:18px;margin:0 0 10px;padding:0 0 6px;border-bottom:1px solid #eee;font:11px Consolas,"Segoe UI";color:#605e5c;} .pane .body .votes b{font-weight:400;color:#a19f9d;margin-right:6px;}';
   CSS += '.imgmenu{position:fixed;z-index:80;width:220px;background:#fff;border:1px solid #c8c6c4;box-shadow:0 6px 18px rgba(0,0,0,.2);padding:10px;font:12px "Microsoft YaHei";}';
   CSS += '.imgmenu img.tiny{width:2cm;height:2cm;object-fit:cover;display:block;margin:0 auto 8px;border:1px solid #e1dfdd;background:#f3f2f1;}';
@@ -538,6 +540,22 @@
   function savePane() {
     storeSet(LS_PANE, String(paneWidth));
   }
+  var mediaSize = 76;
+  function loadMediaSize() {
+    var cands = storeGet(LS_MEDIA), i, n;
+    for (i = 0; i < cands.length; i++) {
+      n = parseInt(cands[i], 10);
+      if (!isNaN(n)) return Math.max(40, Math.min(720, n));
+    }
+    return 76;
+  }
+  function applyMediaSize() {
+    var body = shadow && shadow.querySelector('.pane .body');
+    if (body) body.style.setProperty('--xl-m', mediaSize + 'px');
+  }
+  function saveMediaSize() {
+    storeSet(LS_MEDIA, String(mediaSize));
+  }
   function hydrateLayout() {
     var m = readColsMap(), k;
     for (k in m) {
@@ -550,6 +568,7 @@
       colOrderMap = o;
     }
     paneWidth = loadPaneW();
+    mediaSize = loadMediaSize();
     applyLayoutForView();
     try { applyColWidths(); applyPaneWidth(); } catch (eH) {}
   }
@@ -2816,6 +2835,7 @@
         html += '<a class="imglink" href="' + escapeHtml(imgs[k]) + '">图 ' + (k + 1) + '</a>';
       }
       html += '</div>';
+      html += '<div class="mediasize" title="拖动调整预览大小"></div>';
     }
     return html;
   }
@@ -3158,6 +3178,7 @@
       if (pv.votes) meta += ' · Score ' + pv.votes.like + ' · Pass ' + pv.votes.up + ' · Fail ' + pv.votes.down;
     }
     $('.pane .meta').textContent = meta;
+    applyMediaSize();
     syncCompose();
   }
 
@@ -3931,6 +3952,13 @@
         }
       }
       if (e.button !== 0) return;
+      if (t.closest('.mediasize')) {
+        layoutDrag = { type: 'media', y: e.clientY, s: mediaSize };
+        t.closest('.mediasize').classList.add('on');
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (t.closest('.pane-resizer')) {
         layoutDrag = { type: 'pane', x: e.clientX, w: paneWidth, moved: 0 };
         t.closest('.pane-resizer').classList.add('on');
@@ -3993,6 +4021,10 @@
           layoutDrag.to = +hit.getAttribute('data-vis');
           layoutDrag.after = after;
         }
+      } else if (layoutDrag.type === 'media') {
+        layoutDrag.moved = 1;
+        mediaSize = Math.max(40, Math.min(720, layoutDrag.s + (e.clientY - layoutDrag.y)));
+        applyMediaSize();
       } else {
         layoutDrag.moved = 1;
         paneWidth = paneLimit(layoutDrag.w - (e.clientX - layoutDrag.x));
@@ -4002,6 +4034,11 @@
     window.addEventListener('mouseup', function () {
       if (!layoutDrag) return;
       if (layoutDrag.type === 'col') saveCols();
+      else if (layoutDrag.type === 'media') {
+        var mbar = shadow && shadow.querySelector('.mediasize');
+        if (mbar) mbar.classList.remove('on');
+        saveMediaSize();
+      }
       else if (layoutDrag.type === 'pane') {
         var bar = shadow && shadow.querySelector('.pane-resizer');
         if (bar) bar.classList.remove('on');
