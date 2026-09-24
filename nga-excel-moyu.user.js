@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.26
+// @version      1.10.27
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -149,6 +149,7 @@
   CSS += '.pane .body .qlab,.pane .body .rlab{font:11px "Microsoft YaHei";color:#217346;margin:0 0 4px;}';
   CSS += '.pane .body .qtxt,.pane .body .rtxt{white-space:pre-wrap;word-break:break-word;}';
   CSS += '.pane .body .imgls a{display:block;margin:2px 0;}';
+  CSS += '.pane .body .imgls .xlmedia{display:block;max-width:100%;max-height:360px;margin:6px 0;background:#111;}';
   CSS += '.pane .body .votes{display:flex;gap:18px;margin:0 0 10px;padding:0 0 6px;border-bottom:1px solid #eee;font:11px Consolas,"Segoe UI";color:#605e5c;} .pane .body .votes b{font-weight:400;color:#a19f9d;margin-right:6px;}';
   CSS += '.imgmenu{position:fixed;z-index:80;width:220px;background:#fff;border:1px solid #c8c6c4;box-shadow:0 6px 18px rgba(0,0,0,.2);padding:10px;font:12px "Microsoft YaHei";}';
   CSS += '.imgmenu img.tiny{width:2cm;height:2cm;object-fit:cover;display:block;margin:0 auto 8px;border:1px solid #e1dfdd;background:#f3f2f1;}';
@@ -2514,6 +2515,23 @@
       if (f !== u && !seen[f]) { seen[f] = 1; list.push(f); }
     }
   }
+  function playSrc(u) {
+    u = ngaImgUrl(u);
+    if (!u) return '';
+    var m = u.match(/^(https?:\/\/\S+?\.gif\.mp4)(?:\.org\.jpg(?:\.medium\.jpg)?)?(?:[?#].*)?$/i);
+    if (m) return m[1];
+    if (/\.(mp4|webm|ogg)(?:[?#]|$)/i.test(u)) return u.replace(/[?#].*$/, '');
+    return '';
+  }
+  function mediaTag(url) {
+    var play = playSrc(url);
+    if (play) {
+      var gif = /\.gif\.mp4(?:[?#]|$)/i.test(play);
+      return '<video class="xlmedia" src="' + escapeHtml(play) + '" controls playsinline autoplay muted' + (gif ? ' loop' : '') + '></video>';
+    }
+    if (/\.gif(?:[?#]|$)/i.test(url)) return '<img class="xlmedia" src="' + escapeHtml(url) + '" alt="">';
+    return '';
+  }
   function collectImgs(root) {
     var list = [], seen = {};
     if (!root) return list;
@@ -2523,7 +2541,9 @@
     Array.prototype.forEach.call(root.querySelectorAll('video'), function (v) {
       var src = v.getAttribute('src') || '';
       var poster = v.getAttribute('poster') || '';
-      if (/\.(jpg|jpeg|png|gif|webp|bmp)(\?|#|$)/i.test(src)) addUrl(list, seen, src);
+      var play = playSrc(src) || playSrc(poster);
+      if (play) addUrl(list, seen, play);
+      else if (/\.(jpg|jpeg|png|gif|webp|bmp)(\?|#|$)/i.test(src)) addUrl(list, seen, src);
       else addUrl(list, seen, poster || src);
     });
     Array.prototype.forEach.call(root.querySelectorAll('a[href]'), function (a) {
@@ -2788,6 +2808,7 @@
     if (imgs && imgs.length) {
       html += '<div class="imgls"><b>图片/附件</b>';
       for (var k = 0; k < imgs.length; k++) {
+        html += mediaTag(imgs[k]);
         html += '<a class="imglink" href="' + escapeHtml(imgs[k]) + '">图 ' + (k + 1) + '</a>';
       }
       html += '</div>';
