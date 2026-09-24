@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.27
+// @version      1.10.28
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -140,8 +140,8 @@
   CSS += 'table.grid td.warn{background:#fff2cc;}';
   CSS += 'table.grid tr:nth-child(even) td:not(.rh):not(.head):not(.sec):not(.tot):not(.title):not(.warn){background:#fafafa;}';
   CSS += 'table.grid col{min-width:0;} .resz{position:absolute;right:0;top:0;width:8px;height:100%;cursor:col-resize;z-index:30;} .resz:hover{background:rgba(33,115,70,.45);} .gridwrap.colresize,.gridwrap.colresize *{cursor:col-resize!important;} table.grid th[data-col]{cursor:grab;} table.grid th[data-col].dragging{opacity:.4;} table.grid th[data-col].drop-before{box-shadow:inset 3px 0 0 #185c37;} table.grid th[data-col].drop-after{box-shadow:inset -3px 0 0 #185c37;} .gridwrap.colmove,.gridwrap.colmove *{cursor:grabbing!important;}';
-  CSS += '.pane{width:400px;min-width:180px;flex:none;position:relative;border-left:1px solid #d4d4d4;display:flex;flex-direction:column;background:#fff;}';
-  CSS += '.pane.hide{display:none;} .pane-resizer{position:absolute;left:-3px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:6;} .pane-resizer:hover{background:rgba(33,115,70,.35);}';
+  CSS += '.pane{width:400px;min-width:180px;flex:none;position:relative;border-left:1px solid #d4d4d4;display:flex;flex-direction:column;background:#fff;padding-left:8px;}';
+  CSS += '.pane.hide{display:none;} .pane-resizer{position:absolute;left:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:8;background:#d2d0ce;border-left:1px solid #c8c6c4;border-right:1px solid #c8c6c4;} .pane-resizer:hover,.pane-resizer.on{background:#217346;}';
   CSS += '.pane h3{margin:0;height:28px;display:flex;align-items:center;padding:0 10px;font:12px "Microsoft YaHei";background:#f3f2f1;border-bottom:1px solid #e1dfdd;color:#185c37;}';
   CSS += '.pane .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:10px 12px;font:13px Calibri,DengXian,"Microsoft YaHei";line-height:1.55;user-select:text;white-space:normal;word-break:break-word;color:#252423;}';
   CSS += '.pane .body .qbox{border-left:3px solid #a19f9d;background:#f3f2f1;padding:6px 8px;margin:0 0 10px;color:#605e5c;}';
@@ -374,11 +374,15 @@
   function loadCols() {
     return ensureWidthArr(layoutKey(), readColsMap()[layoutKey()]);
   }
+  function paneLimit(n) {
+    var max = Math.max(420, (window.innerWidth || 1200) - 280);
+    return Math.max(180, Math.min(max, n || 400));
+  }
   function loadPaneW() {
     var cands = storeGet(LS_PANE), i, n;
     for (i = 0; i < cands.length; i++) {
       n = parseInt(cands[i], 10);
-      if (!isNaN(n)) return Math.max(180, Math.min(900, n));
+      if (!isNaN(n)) return paneLimit(n);
     }
     return 400;
   }
@@ -3929,6 +3933,7 @@
       if (e.button !== 0) return;
       if (t.closest('.pane-resizer')) {
         layoutDrag = { type: 'pane', x: e.clientX, w: paneWidth, moved: 0 };
+        t.closest('.pane-resizer').classList.add('on');
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -3990,13 +3995,18 @@
         }
       } else {
         layoutDrag.moved = 1;
-        paneWidth = Math.max(180, Math.min(900, layoutDrag.w - (e.clientX - layoutDrag.x)));
+        paneWidth = paneLimit(layoutDrag.w - (e.clientX - layoutDrag.x));
         applyPaneWidth();
       }
     });
     window.addEventListener('mouseup', function () {
       if (!layoutDrag) return;
       if (layoutDrag.type === 'col') saveCols();
+      else if (layoutDrag.type === 'pane') {
+        var bar = shadow && shadow.querySelector('.pane-resizer');
+        if (bar) bar.classList.remove('on');
+        savePane();
+      }
       else if (layoutDrag.type === 'colmove') {
         var fromV = layoutDrag.from, toV = layoutDrag.to, afterV = layoutDrag.after, did = layoutDrag.moved;
         clearColDropUi();
