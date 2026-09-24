@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.32
+// @version      1.10.33
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -2558,8 +2558,7 @@
       var gif = /\.gif\.mp4(?:[?#]|$)/i.test(play);
       return '<video class="xlmedia" src="' + escapeHtml(play) + '" controls playsinline autoplay muted' + (gif ? ' loop' : '') + '></video>';
     }
-    if (/\.gif(?:[?#]|$)/i.test(url)) return '<img class="xlmedia" src="' + escapeHtml(url) + '" alt="">';
-    return '';
+    return '<img class="xlmedia" src="' + escapeHtml(url) + '" alt="">';
   }
   function collectImgs(root) {
     var list = [], seen = {};
