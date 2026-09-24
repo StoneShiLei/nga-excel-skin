@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.30
+// @version      1.10.31
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -1399,6 +1399,8 @@
     if (state.listKey !== key) {
       state.listKey = key;
       state.listFeed = { rows: [], seen: {}, next: '', loading: false, done: false, tried: {} };
+      state.subFetch = {};
+      state.subMore = {};
     }
     if (!state.listFeed) state.listFeed = { rows: [], seen: {}, next: '', loading: false, done: false, tried: {} };
   }
@@ -1415,6 +1417,21 @@
   function loadMoreList() {
     if (state.mode === 'off' || state.sheet !== 'tk' || state.isRead) return;
     resetListFeedIfNeeded();
+    var names = pickedSubNames();
+    var si, more;
+    state.subMore = state.subMore || {};
+    state.subFetch = state.subFetch || {};
+    for (si = 0; si < names.length; si++) {
+      more = state.subMore[names[si]];
+      if (!more || state.subFetch['p:' + more]) continue;
+      state.subFetch['p:' + more] = 1;
+      (function (nm, url) {
+        httpReq({ url: url, html: 1 }).then(function (r) {
+          ingestSubPage(nm, url, r.text);
+        }).catch(function () {});
+      })(names[si], more);
+      return;
+    }
     if (state.listFeed.loading || state.listFeed.done) return;
     var next = state.listFeed.next || (state.nav && state.nav.next) || '';
     if (!next) {
@@ -1446,6 +1463,55 @@
     }).then(function () {
       state.listFeed.loading = false;
     });
+  }
+  function pickedSubNames() {
+    var pick = state.subPick || {};
+    var names = [];
+    var k;
+    for (k in pick) if (pick.hasOwnProperty(k) && pick[k]) names.push(k);
+    return names;
+  }
+  function ingestSubPage(name, url, html) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var got = scrapeList(doc);
+    var j;
+    for (j = 0; j < got.length; j++) {
+      got[j].fromSub = name;
+      if (!got[j].sub) got[j].sub = name;
+      if (!got[j].subHref) got[j].subHref = url;
+    }
+    mergeList(got);
+    var pg = scrapePager(doc, url);
+    state.subMore = state.subMore || {};
+    state.subMore[name] = pg.next || '';
+    var wrap = shadow && shadow.querySelector('.gridwrap');
+    var sl = wrap ? wrap.scrollLeft : 0;
+    var st = wrap ? wrap.scrollTop : 0;
+    render();
+    wrap = shadow && shadow.querySelector('.gridwrap');
+    if (wrap) { wrap.scrollLeft = sl; wrap.scrollTop = st; }
+  }
+  function pullPickedSubs() {
+    if (state.mode === 'off' || state.sheet !== 'tk' || state.isRead) return;
+    var pack = (state.nav && state.nav.subPack) || {};
+    var rows = pack.rows || [];
+    var want = {};
+    var names = pickedSubNames();
+    var i, name;
+    for (i = 0; i < names.length; i++) want[names[i]] = 1;
+    state.subFetch = state.subFetch || {};
+    for (i = 0; i < rows.length; i++) {
+      name = subLabel(rows[i].title);
+      if (!name || !want[name] || state.subFetch[name] || !rows[i].href) continue;
+      state.subFetch[name] = 1;
+      (function (nm, url) {
+        httpReq({ url: url, html: 1 }).then(function (r) {
+          ingestSubPage(nm, url, r.text);
+        }).catch(function () {
+          state.subFetch[nm] = 0;
+        });
+      })(name, rows[i].href);
+    }
   }
   function isFloorLabel(s) {
     s = String(s || '').replace(/\s+/g, '');
@@ -3058,10 +3124,11 @@
       var x = list[k];
       if (x.tid && pinTids[x.tid]) continue;
       var subName = subLabel(x.sub || '');
-      if (picks.length && subName && picks.indexOf(subName) < 0) continue;
+      var fromSub = x.fromSub || '';
+      if (picks.length && subName && picks.indexOf(subName) < 0 && picks.indexOf(fromSub) < 0) continue;
       var id = 'CWM-' + (x.tid || String(1000 + k));
       var onUnion = String(fidNow || '').charAt(0) === '-' || !!qsGet('ff');
-      var mod = subName || (onUnion ? '本版' : (x.tag || board || '—'));
+      var mod = subName || fromSub || (onUnion ? '本版' : (x.tag || board || '—'));
       var env = '';
       if (x.subHref) {
         var ef = String(x.subHref).match(/[?&]fid=(-?\d+)/i);
@@ -3081,6 +3148,7 @@
       preview[r] = { title: id + ' · ' + x.author, body: id + '  ' + x.title + '\n\ntid: ' + (x.tid || '') + '\nModule: ' + mod + '\nComments: ' + x.replies + '\nUpdated: ' + x.time + '\nStatus: ' + x.status, author: x.author, authorHref: x.authorHref, uid: x.uid, tid: x.tid };
       r++;
     }
+    if (picks.length) pullPickedSubs();
     state.meta = { hrefs: hrefs, preview: preview, isRead: false };
     return g;
   }
