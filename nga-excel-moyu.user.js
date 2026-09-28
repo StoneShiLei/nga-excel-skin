@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.37
+// @version      1.10.38
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -154,7 +154,7 @@
   CSS += '.pane .body .qtxt,.pane .body .rtxt{white-space:pre-wrap;word-break:break-word;}';
   CSS += '.pane .body .imgls a{display:block;margin:2px 0;}';
   CSS += '.pane .body .imgls .xlmedia{display:block;width:var(--xl-m,76px);height:auto;max-width:100%;margin:6px 0;background:#111;}';
-  CSS += '.pane .body .mediasize{display:flex;align-items:center;gap:8px;margin:6px 0 10px;padding:6px 8px;background:#f3f2f1;border:1px solid #d2d0ce;border-radius:4px;font:12px "Microsoft YaHei";color:#605e5c;}';
+  CSS += '.pane .body .mediasize{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;margin:6px 0 8px;padding:6px 8px;background:#f3f2f1;border:1px solid #d2d0ce;border-radius:4px;font:12px "Microsoft YaHei";color:#605e5c;}';
   CSS += '.pane .body .mediasize input{flex:1;height:18px;margin:0;accent-color:#217346;cursor:pointer;}';
   CSS += '.pane .body .mediasize b{min-width:48px;text-align:right;font-weight:600;color:#185c37;}';
   CSS += '.pane .body .votes{display:flex;gap:18px;margin:0 0 10px;padding:0 0 6px;border-bottom:1px solid #eee;font:11px Consolas,"Segoe UI";color:#605e5c;} .pane .body .votes b{font-weight:400;color:#a19f9d;margin-right:6px;}';
@@ -2877,12 +2877,12 @@
     html += '<div class="rbox"><div class="rlab">本楼</div><div class="rtxt">' + linkify((parts && parts.body) || '') + '</div></div>';
     if (imgs && imgs.length) {
       html += '<div class="imgls"><b>图片/附件</b>';
+      html += '<div class="mediasize"><span>预览</span><input type="range" min="40" max="720" step="4" value="76"><b>76px</b></div>';
       for (var k = 0; k < imgs.length; k++) {
         html += mediaTag(imgs[k]);
         html += '<a class="imglink" href="' + escapeHtml(imgs[k]) + '">图 ' + (k + 1) + '</a>';
       }
       html += '</div>';
-      html += '<div class="mediasize"><span>预览</span><input type="range" min="40" max="720" step="4" value="76"><b>76px</b></div>';
     }
     return html;
   }
