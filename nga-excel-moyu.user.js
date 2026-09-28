@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.38
+// @version      1.10.39
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -115,7 +115,7 @@
   CSS += '.btn{height:22px;min-width:22px;padding:0 6px;border:1px solid transparent;border-radius:3px;background:transparent;font:12px "Microsoft YaHei";color:#252423;}';
   CSS += '.btn:hover{background:#fff;border-color:#d2d0ce;}';
   CSS += '.btn.b{font-weight:700;} .btn.i{font-style:italic;} .btn.u{text-decoration:underline;}';
-  CSS += '.sel{height:22px;border:1px solid #d2d0ce;background:#fff;font:12px "Segoe UI";border-radius:2px;}';
+  CSS += '.ribbon .sel{height:22px;border:1px solid #d2d0ce;background:#fff;font:12px "Segoe UI";border-radius:2px;}';
   CSS += '.fontsel{width:92px;} .sizesel{width:52px;}';
   CSS += '.sw{width:16px;height:16px;border:1px solid #c8c6c4;display:inline-block;vertical-align:middle;}';
   CSS += '.formula{height:24px;display:flex;align-items:stretch;border-bottom:1px solid #d4d4d4;background:#fff;}';
