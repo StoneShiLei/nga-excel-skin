@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.39
+// @version      1.10.40
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -1424,12 +1424,7 @@
       state.feed.next = pg.next || '';
       if (pg.max && state.nav && pg.max > (state.nav.maxPage || 0)) state.nav.maxPage = pg.max;
       if (state.feed.posts.length === before) state.feed.done = true;
-      var wrap = shadow && shadow.querySelector('.gridwrap');
-      var sl = wrap ? wrap.scrollLeft : 0;
-      var st = wrap ? wrap.scrollTop : 0;
       render();
-      wrap = shadow && shadow.querySelector('.gridwrap');
-      if (wrap) { wrap.scrollLeft = sl; wrap.scrollTop = st; }
     }).catch(function () {
       state.feed.done = true;
     }).then(function () {
@@ -1446,11 +1441,19 @@
   }
   function mergeList(rows) {
     resetListFeedIfNeeded();
-    var i, row;
+    var i, row, prev;
     for (i = 0; i < (rows || []).length; i++) {
       row = rows[i];
-      if (!row || !row.tid || state.listFeed.seen[row.tid]) continue;
-      state.listFeed.seen[row.tid] = 1;
+      if (!row || !row.tid) continue;
+      prev = state.listFeed.seen[row.tid];
+      if (prev && typeof prev === 'object') {
+        if ((!prev.time || prev.time === '-') && row.time && row.time !== '-') prev.time = row.time;
+        if ((!prev.author || prev.author === '-') && row.author && row.author !== '-') prev.author = row.author;
+        if (!prev.replies && row.replies) prev.replies = row.replies;
+        continue;
+      }
+      if (prev) continue;
+      state.listFeed.seen[row.tid] = row;
       state.listFeed.rows.push(row);
     }
   }
@@ -1476,13 +1479,11 @@
       var pg = scrapePager(doc, next);
       state.listFeed.next = pg.next || '';
       if (!state.listFeed.next && pg.max && ((state.nav && state.nav.page) || currentPageN()) >= pg.max) state.listFeed.done = true;
-      if (state.listFeed.rows.length === before) state.listFeed.done = true;
-      var wrap = shadow && shadow.querySelector('.gridwrap');
-      var sl = wrap ? wrap.scrollLeft : 0;
-      var st = wrap ? wrap.scrollTop : 0;
+      if (state.listFeed.rows.length === before) {
+        if (pg.next && pg.next !== next) state.listFeed.next = pg.next;
+        else state.listFeed.done = true;
+      }
       render();
-      wrap = shadow && shadow.querySelector('.gridwrap');
-      if (wrap) { wrap.scrollLeft = sl; wrap.scrollTop = st; }
     }).catch(function () {
       state.listFeed.done = true;
     }).then(function () {
@@ -2333,10 +2334,26 @@
     if (!m) return abs || shown;
     return m[2] + '-' + m[3] + (m[4] ? ' ' + m[4] : '');
   }
+  function listTimeMap(root) {
+    var map = {};
+    if (!root || !root.querySelectorAll) return map;
+    var html = '';
+    var scripts = root.querySelectorAll('script');
+    var i;
+    for (i = 0; i < scripts.length; i++) html += '\n' + (scripts[i].textContent || '');
+    if (html.indexOf('topicArg.add') < 0) return map;
+    var re = /topicArg\.add\(\s*(?:'[^']*'\s*,\s*){7}'?-?\d+'?\s*,\s*(\d+)\s*,\s*'[^']*'\s*,\s*'[^']*'\s*,\s*'[^']*'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g;
+    var m;
+    while ((m = re.exec(html))) {
+      map[m[1]] = { post: parseInt(m[2], 10) || 0, last: parseInt(m[3], 10) || 0, replies: parseInt(m[4], 10) || 0 };
+    }
+    return map;
+  }
   function scrapeList(root) {
     root = root || document;
     var byTid = {};
     var order = [];
+    var timeMap = listTimeMap(root);
     function add(a) {
       if (a.closest && (a.closest('.ubbcode') || a.closest('#toptopics') || a.closest('.pager'))) {
         if (!(a.classList && a.classList.contains('topic'))) return;
@@ -2358,6 +2375,9 @@
         if (rd) time = replyShown(rd);
         time = time.slice(0, 22);
       }
+      var info = timeMap[tid];
+      if ((!time || time === '-') && info && info.last) time = notiWhen(info.last);
+      if (!replies && info && info.replies) replies = String(info.replies);
       var repliesN = parseInt(replies, 10) || 0;
       var authorHref = '';
       var uid = '';
@@ -3140,8 +3160,18 @@
     return cell.t || '';
   }
 
-  function render() {
+  function render(opt) {
     if (state.mode === 'off') return;
+    opt = opt || {};
+    var keepScroll = !opt.nested;
+    var keepSt = 0;
+    var keepSl = 0;
+    if (keepScroll) {
+      var holdWrap = $('.gridwrap');
+      keepSt = holdWrap ? holdWrap.scrollTop : 0;
+      keepSl = holdWrap ? holdWrap.scrollLeft : 0;
+      state.scrollHold = (state.scrollHold || 0) + 1;
+    }
     try {
     state.cells = currentGrid();
     applyLayoutForView();
@@ -3189,9 +3219,33 @@
     updateChrome();
     if (!state._filling) {
       state._filling = 1;
-      try { if (fillGridToView()) render(); } finally { state._filling = 0; }
+      try { if (fillGridToView()) render({ nested: 1 }); } finally { state._filling = 0; }
     }
     } catch (err) { try { console.warn('[nga-xl]', err); } catch (e2) {} }
+    finally {
+      if (keepScroll) restoreGridScroll(keepSt, keepSl);
+    }
+  }
+  function restoreGridScroll(st, sl) {
+    function apply() {
+      var w = $('.gridwrap');
+      if (!w) return;
+      var max = Math.max(0, w.scrollHeight - w.clientHeight);
+      w.scrollLeft = sl || 0;
+      w.scrollTop = Math.min(st || 0, max);
+    }
+    apply();
+    requestAnimationFrame(function () {
+      apply();
+      state.scrollHold = Math.max(0, (state.scrollHold || 1) - 1);
+      if (state.scrollHold) return;
+      var w = $('.gridwrap');
+      if (!w || state.mode === 'off' || state.sheet !== 'tk') return;
+      if (w.scrollTop + w.clientHeight >= w.scrollHeight - 140) {
+        if (state.isRead) loadMorePosts();
+        else loadMoreList();
+      }
+    });
   }
 
   function escapeHtml(s) {
@@ -4217,6 +4271,7 @@
     if (wrap && !wrap.getAttribute('data-xl-scroll')) {
       wrap.setAttribute('data-xl-scroll', '1');
       wrap.addEventListener('scroll', function () {
+        if (state.scrollHold) return;
         if (wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 140) {
           if (state.isRead) loadMorePosts();
           else loadMoreList();
