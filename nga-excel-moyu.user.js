@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.34
+// @version      1.10.35
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -210,7 +210,22 @@
   CSS += '.compose .vrow{display:flex;gap:6px;align-items:center;margin-top:6px;} .compose .vrow.off{display:none;} .compose .vimg{height:28px;cursor:pointer;border:1px solid #d2d0ce;} .compose .vcode{height:22px;width:90px;border:1px solid #d2d0ce;padding:0 6px;font:12px Segoe UI;}';
   CSS += '.navrow .mini{width:52px;height:22px;border:1px solid #d2d0ce;font:12px Segoe UI;padding:0 4px;}';
   CSS += '.search,.findbar input,.navrow input,.dlg input,.compose input,.compose textarea{user-select:text;}';
-  CSS += '.search{color:#252423;}'
+  CSS += '.search{color:#252423;}';
+  CSS += '.xlnoti{position:fixed;top:64px;right:12px;z-index:85;width:340px;max-height:70vh;overflow:auto;background:#fff;border:1px solid #c8c6c4;box-shadow:0 8px 24px rgba(0,0,0,.18);font:12px "Microsoft YaHei";color:#252423;}';
+  CSS += '.xlnoti.off{display:none;}';
+  CSS += '.xlnoti .hd{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#f3f2f1;border-bottom:1px solid #e1dfdd;font-weight:600;}';
+  CSS += '.xlnoti .hd button,.xlnoti .ft button,.xlnoti .more button{border:1px solid #c8c6c4;background:#fff;font:12px "Microsoft YaHei";padding:1px 8px;cursor:pointer;}';
+  CSS += '.xlnoti .hd button:hover,.xlnoti .ft button:hover,.xlnoti .more button:hover{border-color:#217346;}';
+  CSS += '.xlnoti .bd{padding:4px 8px;}';
+  CSS += '.xlnoti .nrow{padding:4px 2px;border-bottom:1px solid #f3f2f1;line-height:1.45;}';
+  CSS += '.xlnoti .nrow:nth-child(even){background:#faf9f8;}';
+  CSS += '.xlnoti .sq{margin-right:4px;}';
+  CSS += '.xlnoti .silver{color:#a19f9d;}';
+  CSS += '.xlnoti a.go{color:#185c37;text-decoration:none;cursor:pointer;} .xlnoti a.go:hover{text-decoration:underline;}';
+  CSS += '.xlnoti a.stop{color:#a19f9d;text-decoration:none;cursor:pointer;margin-left:4px;} .xlnoti a.stop:hover{text-decoration:underline;}';
+  CSS += '.xlnoti .more,.xlnoti .ft{padding:6px 8px;border-top:1px solid #eee;}';
+  CSS += '.xlnoti .more.off{display:none;}';
+  CSS += '.xlnoti .ft{color:#605e5c;} .xlnoti .ft .gap{margin-left:8px;}';
 
   var COL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var state = {
@@ -1141,6 +1156,10 @@
     if (act === 'reload') hardReload();
     else if (act === 'copy') copyRowLink();
     else if (act === 'mine') actMyTopics();
+    else if (act === 'noti') {
+      try { localStorage.removeItem(LS_NOTI_OFF); } catch (eN) {}
+      loadNoti(2);
+    }
     else if (act === 'back') goTo(state.nav && state.nav.back);
     else if (act === 'owner') actOwnerFilter();
     else if (act === 'digest') toggleDigest();
@@ -3587,9 +3606,11 @@
   }
 
   function setMode(mode) {
+    var back = state.mode === 'off' && mode !== 'off';
     state.mode = mode;
     localStorage.setItem(LS_MODE, mode);
     applyMode();
+    if (back) loadNoti(1);
   }
 
   function applyMode() {
@@ -3661,6 +3682,7 @@
       '<button type="button" data-file="reload">刷新</button>',
       '<button type="button" data-file="copy">复制链接</button>',
       '<button type="button" data-file="mine">我的主题</button>',
+      '<button type="button" data-file="noti">提醒信息</button>',
       '<button type="button" data-file="back">返回列表</button>',
       '<button type="button" data-file="owner">只看该作者</button>',
       '<button type="button" data-file="digest">精华区</button>',
@@ -3712,6 +3734,7 @@
       '<div class="stab" data-sheet="as">字段映射</div>',
       '<div class="sstat"><span class="avg">就绪</span><span>筛选</span><span>100%</span></div>',
       '</div>',
+      '<div class="xlnoti off" id="xl-noti"><div class="hd"><span>提醒信息</span><button type="button" data-noti="close">×</button></div><div class="bd"></div><div class="more off">有更多的提醒未显示 <button type="button" data-noti="inbox">查看</button></div><div class="ft"><button type="button" data-noti="clear">清空</button><button type="button" data-noti="inbox">信箱</button><button type="button" data-noti="close">关闭</button><span class="gap">一个月内 <button type="button" data-noti="mute">不再提示</button></span></div></div>',
       '<div class="hint">Alt+Q 老板键　F10 原版　F5 刷新　Ctrl+C 复制</div>'
     ].join('');
     shadow.appendChild(root);
@@ -3787,6 +3810,10 @@
       if (t.closest('.imgmenu')) return;
       hideImgMenu();
       if (!t.closest('.filemenu') && !t.closest('.filebtn')) hideFileMenu();
+      if (t.closest('#xl-noti')) {
+        onNotiClick(e, t);
+        return;
+      }
       if (t.closest('.filebtn') || (t.classList && t.classList.contains('rtab') && /文件/.test(t.textContent || ''))) {
         e.preventDefault();
         toggleFileMenu();
@@ -4135,6 +4162,11 @@
       var t = e.target;
       if (t && t.nodeType === 3) t = t.parentElement;
       if (!t || !t.closest) return;
+      if (t.closest('#xl-noti a[data-href]')) {
+        e.preventDefault();
+        openBg(t.closest('#xl-noti a[data-href]').getAttribute('data-href'));
+        return;
+      }
       if (t.closest('a.cella')) return;
       var imgA = t.closest('a.imglink');
       if (imgA) {
@@ -4234,6 +4266,7 @@
       closeFind();
       hideDlg();
       hideFileMenu();
+      hideNoti();
     }
     var inC = eventInCompose(e);
     if (inC) {
@@ -4285,6 +4318,331 @@
     }, 400);
   }
 
+  var LS_NOTI_OFF = 'nga-xl-noti-off';
+  var notiBusy = false;
+  var notiPending = 0;
+  function notiCut(s, max) {
+    s = String(s || '');
+    var w = 0, i, out = '';
+    for (i = 0; i < s.length; i++) {
+      var dw = s.charCodeAt(i) > 255 ? 2 : 1;
+      if (w + dw > max) return out + '\u2026';
+      out += s.charAt(i);
+      w += dw;
+    }
+    return out;
+  }
+  function notiWhen(ts) {
+    ts = parseInt(ts, 10) || 0;
+    if (!ts) return '';
+    var now = Math.floor(Date.now() / 1000);
+    var x = now - ts;
+    if (x < 4500) {
+      if (x < 60) return '刚才';
+      if (x < 450) return '5分钟前';
+      if (x < 750) return '10分钟前';
+      if (x < 1050) return '15分钟前';
+      if (x < 1350) return '20分钟前';
+      if (x < 1650) return '25分钟前';
+      if (x < 2100) return '30分钟前';
+      if (x < 2700) return '40分钟前';
+      if (x < 3300) return '50分钟前';
+      return '1小时前';
+    }
+    var d = new Date(ts * 1000);
+    var start = new Date();
+    start.setHours(0, 0, 0, 0);
+    var day0 = Math.floor(start.getTime() / 1000);
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (ts > day0 - 172800) {
+      var lab = ts > day0 ? '今天' : (ts > day0 - 86400 ? '昨天' : '前天');
+      return lab + ' ' + hm;
+    }
+    var y0 = new Date(start.getFullYear(), 0, 1);
+    if (ts > Math.floor(y0.getTime() / 1000)) return (d.getMonth() + 1) + '-' + d.getDate() + ' ' + hm;
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  function notiMuted() {
+    var t = parseInt(localStorage.getItem(LS_NOTI_OFF) || '0', 10) || 0;
+    return t > Math.floor(Date.now() / 1000);
+  }
+  function notiEl(tag, cls) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    return n;
+  }
+  function notiA(href, text, title) {
+    var n = notiEl('a', 'go');
+    n.textContent = text || '';
+    n.href = href;
+    n.setAttribute('data-href', href);
+    if (title) n.title = title;
+    return n;
+  }
+  function notiStop(tid, pid, title) {
+    var n = notiEl('a', 'stop');
+    n.textContent = '不提示';
+    n.href = 'javascript:void(0)';
+    n.title = title || '不再提示';
+    n.setAttribute('data-noti-stop', (parseInt(tid, 10) || 0) + ',' + (parseInt(pid, 10) || 0));
+    return n;
+  }
+  function notiColor(bit, type) {
+    var map = {
+      0: { 1: '#1a5fb4', 2: '#1a5fb4', 3: '#1a5fb4', 4: '#1a5fb4', 7: '#217346', 8: '#217346' },
+      1: { 10: '#c65911', 11: '#c65911', 12: '#c65911' },
+      2: { 5: '#a4262c', 6: '#a4262c', 9: '#a4262c', 16: '#a4262c' }
+    };
+    var g = map[bit] || {};
+    return g[type] || '#605e5c';
+  }
+  function notiParts(x) {
+    var type = parseInt(x[0], 10) || 0;
+    var name = x[2] || '';
+    var text = x[5] || '';
+    var tid = x[6] || 0;
+    var pid = x[7] || 0;
+    var pid3 = x[8] || 0;
+    var text2 = x[11] || '';
+    var text3 = x[13] || '';
+    var page = parseInt(x[10], 10) || 0;
+    var root = originRoot();
+    var user = notiA(root + '/nuke.php?func=ucp&uid=' + (x[1] || 0), notiCut(name, 7) || '用户', name);
+    var topic = notiA(root + '/read.php?tid=' + tid, notiCut(text, 19) || '主题', text);
+    var topicWord = notiA(root + '/read.php?tid=' + tid, '主题');
+    var titlePage = notiA(root + '/read.php?tid=' + tid + '&page=' + (page || 1) + '#pid' + pid + 'Anchor', notiCut(text, 19) || '主题', text);
+    var titleTo = notiA(root + '/read.php?tid=' + tid + '&pid=' + pid + '&to=1', notiCut(text, 19) || '主题', text);
+    var reply = notiA(root + '/read.php?pid=' + pid, '回复');
+    var reply3 = notiA(root + '/read.php?pid=' + pid3, '回复');
+    var replyTo = notiA(root + '/read.php?tid=' + tid + '&pid=' + pid + '&to=1', '回复');
+    var comment = notiA(root + '/read.php?tid=' + tid, '评论');
+    var commentPid = notiA(root + '/read.php?pid=' + pid3, '评论');
+    var msg = notiA(root + '/nuke.php?func=message#mid=' + tid, '对话');
+    var stopTopic = notiStop(tid, 0, '不再提示此主题的回复或评论');
+    var stopReply = notiStop(tid, pid3 || pid, '不再提示此回复的回复或评论');
+    var note = notiEl('span', 'silver');
+    note.textContent = notiCut(text2, 19);
+    note.title = text2;
+    if (type === 1) return [user, ' ', reply, ' 了你的', topicWord, ' ', page ? titlePage : titleTo, ' ', stopTopic];
+    if (type === 2) return page
+      ? [user, ' ', reply, ' 了你在', topicWord, ' ', titlePage, ' 中的 ', reply3, ' ', stopReply]
+      : [user, ' ', reply, ' 了你在主题 ', topic, ' 中的 ', reply3, ' ', stopReply];
+    if (type === 3) return [user, ' ', comment, ' 了你的主题 ', topic, ' ', stopTopic];
+    if (type === 4) return page
+      ? [user, ' ', commentPid, ' 了你在', topicWord, ' ', titlePage, ' 中的 ', reply3, ' ', stopReply]
+      : [user, ' ', commentPid, ' 了你在主题 ', topic, ' 中的 ', reply3, ' ', stopReply];
+    if (type === 5) return [user, ' 发布的主题 ', topic, ' 触发了关键词监视'];
+    if (type === 6) return page
+      ? [user, ' 在', topicWord, ' ', titlePage, ' 中的 ', replyTo, ' 触发了关键词监视']
+      : [user, ' 在主题 ', topic, ' 中的 ', replyTo, ' 触发了关键词监视'];
+    if (type === 7) return [user, ' 在主题 ', topic, ' 中提到了你'];
+    if (type === 8) return page
+      ? [user, ' 在', topicWord, ' ', titlePage, ' 中的 ', reply, ' 中提到了你']
+      : [user, ' 在主题 ', topic, ' 中的 ', reply, ' 中提到了你'];
+    if (type === 9) return ['你的帐号可能记录到新的IP 查看 ', notiA(root + '/nuke.php?func=adminlog&f=access_log', '访问记录'), ' 获得详细信息'];
+    if (type === 10) return [user, ' 发起了新的 ', msg];
+    if (type === 11) return [user, ' 回复了 ', msg];
+    if (type === 12) return [user, ' 邀请了新用户加入 ', msg];
+    if (type === 13) return [user, ' 举报 [', notiCut(text3, 4), ']', topic, ' ', note];
+    if (type === 14) return page
+      ? [user, ' 举报 [', notiCut(text3, 4), ']', topicWord, ' ', titlePage, ' 中的 ', replyTo, ' ', note]
+      : [user, ' 举报 [', notiCut(text3, 4), ']', topic, ' 中的 ', replyTo, ' ', note];
+    if (type === 15) return pid
+      ? [user, ' 评价了你在', topic, ' 中的 ', reply, ' 并使用了道具 ', stopReply]
+      : [user, ' 评价了你在', topic, ' 中的发言 并使用了道具 ', stopTopic];
+    if (type === 16) return ['FID:', String(tid), ' 中的发帖触发了关键词监视 ', notiA(root + '/thread.php?fid=' + tid, '详细信息')];
+    if (type === 17) return pid
+      ? ['你在主题 ', page ? titlePage : titleTo, ' 中的 ', reply, ' 获得了支持或反对 ', stopReply]
+      : ['你的主题 ', topic, ' 获得了支持或反对 ', stopTopic];
+    if (name || text) return [user, text ? (' ' + notiCut(text, 40)) : ''];
+    return null;
+  }
+  function notiRowEl(bit, x) {
+    if (!x) return null;
+    var parts = notiParts(x);
+    if (!parts) return null;
+    var type = parseInt(x[0], 10) || 0;
+    var row = notiEl('div', 'nrow');
+    var sq = notiEl('b', 'sq');
+    sq.style.color = notiColor(bit, type);
+    sq.textContent = '\u25a0';
+    row.appendChild(sq);
+    var when = notiWhen(x[9]);
+    if (when) {
+      var tm = notiEl('span', 'silver');
+      tm.textContent = when + ' ';
+      row.appendChild(tm);
+    }
+    parts.forEach(function (p) {
+      if (p == null || p === '') return;
+      row.appendChild(typeof p === 'string' ? document.createTextNode(p) : p);
+    });
+    return row;
+  }
+  function notiBox() { return shadow && shadow.querySelector('#xl-noti'); }
+  function hideNoti() {
+    var box = notiBox();
+    if (box) box.classList.add('off');
+  }
+  function notiBag(obj) {
+    var d = obj && obj.data;
+    if (!d || typeof d !== 'object') return null;
+    var bag = Array.isArray(d) ? d[0] : d;
+    if (!bag || typeof bag !== 'object') return null;
+    var k, hasArr = false, nested = null;
+    for (k in bag) {
+      if (!Object.prototype.hasOwnProperty.call(bag, k) || k === 'unread') continue;
+      if (Array.isArray(bag[k])) hasArr = true;
+      else if (bag[k] && typeof bag[k] === 'object') nested = bag[k];
+    }
+    if (!hasArr && nested) return nested;
+    return bag;
+  }
+  function notiList(bag) {
+    var out = [];
+    if (!bag) return out;
+    ['0', '1', '2'].forEach(function (k) {
+      var arr = bag[k];
+      if (!Array.isArray(arr)) return;
+      arr.forEach(function (row) {
+        if (row && typeof row === 'object') out.push({ bit: parseInt(k, 10) || 0, row: row });
+      });
+    });
+    return out;
+  }
+  function notiReq(fields) {
+    return httpReq({
+      method: 'POST',
+      url: originRoot() + '/nuke.php?__lib=noti&raw=3',
+      body: formBody(fields),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    }).then(function (r) { return parseNuke(r.text); });
+  }
+  function notiShowText(text) {
+    var box = notiBox();
+    if (!box) return;
+    var bd = box.querySelector('.bd');
+    var more = box.querySelector('.more');
+    if (bd) bd.textContent = text || '';
+    if (more) more.classList.add('off');
+    box.classList.remove('off');
+  }
+  function notiRender(rows, opt) {
+    opt = opt || {};
+    var box = notiBox();
+    if (!box || !rows || !rows.length) return;
+    var bd = box.querySelector('.bd');
+    var moreEl = box.querySelector('.more');
+    if (!bd) return;
+    var replace = opt.replace || box.classList.contains('off') || !bd.querySelector('.nrow');
+    if (replace) bd.innerHTML = '';
+    var by = { 0: [], 1: [], 2: [] };
+    var more = false;
+    rows.forEach(function (it) {
+      if (!by[it.bit]) by[it.bit] = [];
+      by[it.bit].push(it);
+    });
+    var frag = document.createDocumentFragment();
+    var any = false;
+    [0, 1, 2].forEach(function (bit) {
+      var arr = by[bit] || [];
+      if (!arr.length) return;
+      var use = arr;
+      if (opt.limit && arr.length > 5) {
+        more = true;
+        use = arr.slice(arr.length - 5);
+      }
+      use.slice().reverse().forEach(function (it) {
+        var node = notiRowEl(it.bit, it.row);
+        if (!node) return;
+        frag.appendChild(node);
+        any = true;
+      });
+    });
+    if (!any) return;
+    if (replace) bd.appendChild(frag);
+    else bd.insertBefore(frag, bd.firstChild);
+    if (moreEl) moreEl.classList.toggle('off', !more);
+    box.classList.remove('off');
+  }
+  function loadNoti(mode) {
+    if (!shadow || state.mode === 'off') return;
+    if (mode === 1 && notiMuted()) return;
+    if (notiBusy) {
+      if (mode === 2) notiPending = 2;
+      return;
+    }
+    notiBusy = true;
+    notiReq({ __act: 'get_all', time_limit: mode === 1 ? 'lastgettime' : '1' }).then(function (obj) {
+      notiBusy = false;
+      if (obj && obj.error) {
+        if (mode === 2) notiShowText('收件箱中没有信息');
+      } else {
+        var rows = notiList(notiBag(obj));
+        if (!rows.length) {
+          if (mode === 2) notiShowText('收件箱中没有信息');
+        } else notiRender(rows, mode === 1 ? { limit: 1 } : { replace: 1 });
+      }
+      var next = notiPending;
+      notiPending = 0;
+      if (next) loadNoti(next);
+    }).catch(function () {
+      notiBusy = false;
+      var next = notiPending;
+      notiPending = 0;
+      if (next) loadNoti(next);
+    });
+  }
+  function onNotiClick(e, t) {
+    var stop = t.closest('[data-noti-stop]');
+    if (stop) {
+      e.preventDefault();
+      var pair = (stop.getAttribute('data-noti-stop') || '0,0').split(',');
+      notiReq({ __act: 'set_post_tag', no_hint: 1, tid: pair[0] || 0, pid: pair[1] || 0 }).then(function () {
+        var row = stop.closest('.nrow');
+        if (row) row.remove();
+        var box = notiBox();
+        if (box && !box.querySelector('.nrow')) hideNoti();
+      }).catch(function () {});
+      return;
+    }
+    var act = t.closest('[data-noti]');
+    if (act) {
+      e.preventDefault();
+      var k = act.getAttribute('data-noti');
+      if (k === 'close') hideNoti();
+      else if (k === 'clear') {
+        notiReq({ __act: 'del' }).then(function () { hideNoti(); }).catch(function () { hideNoti(); });
+      } else if (k === 'inbox') {
+        try { localStorage.removeItem(LS_NOTI_OFF); } catch (e1) {}
+        loadNoti(2);
+      } else if (k === 'mute') {
+        try { localStorage.setItem(LS_NOTI_OFF, String(Math.floor(Date.now() / 1000) + 86400 * 30)); } catch (e2) {}
+        hideNoti();
+      }
+      return;
+    }
+    var link = t.closest('a[data-href]');
+    if (!link) return;
+    e.preventDefault();
+    var href = link.getAttribute('data-href');
+    if (e.ctrlKey || e.metaKey) openBg(href);
+    else silentGo(href);
+  }
+  function bootNoti() {
+    if (window.__xlNoti) return;
+    window.__xlNoti = 1;
+    setTimeout(function () { loadNoti(1); }, 1600);
+    setInterval(function () {
+      if (document.visibilityState === 'hidden') return;
+      loadNoti(1);
+    }, 120000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') loadNoti(1);
+    });
+  }
+
   function bootHide() {
     if ((localStorage.getItem(LS_MODE) || 'skin') === 'off') return;
     document.documentElement.classList.add('nga-xl-pending');
@@ -4320,6 +4678,7 @@
     setTimeout(releaseIfLogin, 900);
     setTimeout(releaseIfLogin, 2500);
     setTimeout(restoreDraft, 600);
+    bootNoti();
     try {
       var mo = new MutationObserver(scheduleRefresh);
       mo.observe(document.documentElement, { childList: true, subtree: true });
