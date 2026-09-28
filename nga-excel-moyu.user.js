@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.36
+// @version      1.10.37
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -130,7 +130,7 @@
   CSS += 'table.grid th{background:#f8f8f8;font:11px "Segoe UI";color:#333;text-align:center;position:sticky;top:0;z-index:2;}';
   CSS += 'table.grid th.rh{width:36px;left:0;z-index:3;color:#666;font-weight:400;}';
   CSS += 'table.grid td.rh{width:36px;background:#f8f8f8;text-align:center;color:#666;position:sticky;left:0;z-index:1;font:11px "Segoe UI";padding:0;}';
-  CSS += 'table.grid td.sel{outline:2px solid #217346;outline-offset:-2px;background:#e2f0d9 !important;position:relative;z-index:1;}';
+  CSS += 'table.grid td.sel{box-shadow:inset 0 0 0 2px #217346;background:#e2f0d9 !important;}';
   CSS += 'table.grid tr.selrow td:not(.rh){background:#e2f0d9;}';
   CSS += 'table.grid td.link{color:#0563c1;text-decoration:underline;cursor:pointer;}';
   CSS += 'table.grid td.num{text-align:right;font-variant-numeric:tabular-nums;}';
@@ -163,8 +163,8 @@
   CSS += '.imgmenu .url{font:11px Consolas,monospace;color:#605e5c;word-break:break-all;margin:0 0 8px;max-height:2.6em;overflow:hidden;}';
   CSS += '.imgmenu button{display:block;width:100%;text-align:left;margin:0 0 4px;padding:6px 8px;border:1px solid #d2d0ce;background:#f3f2f1;border-radius:3px;font:12px "Microsoft YaHei";cursor:pointer;}';
   CSS += '.imgmenu button:hover{background:#fff;border-color:#217346;}';
-  CSS += 'table.grid td.wrap{white-space:normal;height:auto;padding:1px 4px;overflow:hidden;vertical-align:top;}';
-  CSS += 'table.grid td.wrap .clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.45;max-height:4.35em;}';
+  CSS += 'table.grid td.wrap{position:relative;white-space:normal;height:auto;padding:1px 4px;overflow:hidden;vertical-align:top;}';
+  CSS += 'table.grid td.wrap .clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.45;max-height:4.35em;}';
   CSS += 'table.grid tr.wraprow td{height:auto;vertical-align:top;}';
   CSS += '.pane .body a{color:#0563c1;text-decoration:underline;cursor:pointer;word-break:break-all;} .pane .body .imgls b{display:block;margin:8px 0 4px;font:12px "Microsoft YaHei";color:#185c37;}';
   CSS += '.pane .meta{padding:6px 12px;font:11px "Microsoft YaHei";color:#605e5c;border-bottom:1px solid #eee;}';

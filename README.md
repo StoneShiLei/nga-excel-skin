@@ -1,6 +1,6 @@
 # NGA Excel 摸鱼皮肤
 
-桌面浏览器里用的 Tampermonkey 脚本。打开 NGA 时盖上一层 Excel，文件名是 `CW3_Sprint_联调清单_202609.xlsx`。当前版本 **1.10.36**。
+桌面浏览器里用的 Tampermonkey 脚本。打开 NGA 时盖上一层 Excel，文件名是 `CW3_Sprint_联调清单_202609.xlsx`。当前版本 **1.10.37**。
 
 脚本文件：`nga-excel-moyu.user.js`。
 
@@ -28,7 +28,7 @@
 
 板块列表的列是 CWM、需求说明、Assignee、评论、Updated、Status、模块、环境。楼里的列是 #、Author、Time、Comment、Type、Source。
 
-Updated 显示页面上的「刚才」「今天 13:56」「5分钟前」。Comment 折行最多 3 行，全文在右侧明细。
+Updated 显示页面上的「刚才」「今天 13:56」「5分钟前」。Comment 折行最多 3 行，全文在右侧明细。改字号后点选单元格，这一行的高度不变。
 
 列表和楼内的列宽、列顺序分开保存。拖过的宽度在更新脚本后还在。开始栏的字号会改表格、公式栏和右侧明细的字号，可选 8 到 72，默认 12，改完记住。
 
