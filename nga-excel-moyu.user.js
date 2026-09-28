@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.35
+// @version      1.10.36
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -87,11 +87,13 @@
   var LS_COLORD = 'nga-xl-colord';
   var LS_DRAFT = 'nga-xl-draft';
   var LS_SUB = 'nga-xl-subpick';
+  var LS_FONT = 'nga-xl-font';
+  var FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72];
 
   var CSS = '';
   CSS += ':host{font-family:"Segoe UI","Microsoft YaHei",DengXian,sans-serif;color:#252423;display:block;width:100%;height:100%;}';
   CSS += '*{box-sizing:border-box;}';
-  CSS += '.app{display:flex;flex-direction:column;width:100%;height:100%;background:#fff;user-select:none;position:relative;overflow:hidden;}';
+  CSS += '.app{--xl-fs:12px;display:flex;flex-direction:column;width:100%;height:100%;background:#fff;user-select:none;position:relative;overflow:hidden;}';
   CSS += '.appbar{height:36px;display:flex;align-items:center;gap:8px;padding:0 10px;background:#fff;border-bottom:1px solid #e1dfdd;}';
   CSS += '.icon{width:20px;height:20px;border-radius:3px;background:#185c37;color:#fff;font:700 12px/20px Arial;text-align:center;flex:none;}';
   CSS += '.filebtn{font:12px "Microsoft YaHei";padding:2px 8px;border-radius:3px;}';
@@ -114,16 +116,17 @@
   CSS += '.btn:hover{background:#fff;border-color:#d2d0ce;}';
   CSS += '.btn.b{font-weight:700;} .btn.i{font-style:italic;} .btn.u{text-decoration:underline;}';
   CSS += '.sel{height:22px;border:1px solid #d2d0ce;background:#fff;font:12px "Segoe UI";border-radius:2px;}';
-  CSS += '.fontsel{width:92px;} .sizesel{width:40px;}';
+  CSS += '.fontsel{width:92px;} .sizesel{width:52px;}';
   CSS += '.sw{width:16px;height:16px;border:1px solid #c8c6c4;display:inline-block;vertical-align:middle;}';
   CSS += '.formula{height:24px;display:flex;align-items:stretch;border-bottom:1px solid #d4d4d4;background:#fff;}';
   CSS += '.namebox{width:72px;border-right:1px solid #d4d4d4;font:12px Consolas,"Segoe UI";display:flex;align-items:center;justify-content:center;color:#252423;}';
   CSS += '.fx{width:28px;font:italic 13px "Times New Roman";color:#217346;display:flex;align-items:center;justify-content:center;border-right:1px solid #d4d4d4;}';
-  CSS += '.fxinput{flex:1;font:12px Calibri,DengXian,"Microsoft YaHei";padding:0 8px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;user-select:text;}';
+  CSS += '.fxinput{flex:1;font-family:Calibri,DengXian,"Microsoft YaHei";font-size:var(--xl-fs,12px);padding:0 8px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;user-select:text;}';
   CSS += '.main{flex:1;display:flex;min-height:0;background:#fff;}';
   CSS += '.gridwrap{flex:1;min-width:0;overflow:auto;position:relative;background:#fff;overscroll-behavior:contain;}';
-  CSS += 'table.grid{border-collapse:collapse;table-layout:fixed;font:12px Calibri,DengXian,"Microsoft YaHei";}';
-  CSS += 'table.grid th,table.grid td{border:1px solid #d0d0d0;height:18px;padding:0 4px;overflow:hidden;min-width:0;max-width:0;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}';
+  CSS += 'table.grid{border-collapse:collapse;table-layout:fixed;font-family:Calibri,DengXian,"Microsoft YaHei";font-size:var(--xl-fs,12px);}';
+  CSS += 'table.grid th,table.grid td{border:1px solid #d0d0d0;padding:0 4px;overflow:hidden;min-width:0;max-width:0;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}';
+  CSS += 'table.grid th{height:18px;} table.grid td{height:calc(var(--xl-fs, 12px) + 6px);}';
   CSS += 'table.grid th{background:#f8f8f8;font:11px "Segoe UI";color:#333;text-align:center;position:sticky;top:0;z-index:2;}';
   CSS += 'table.grid th.rh{width:36px;left:0;z-index:3;color:#666;font-weight:400;}';
   CSS += 'table.grid td.rh{width:36px;background:#f8f8f8;text-align:center;color:#666;position:sticky;left:0;z-index:1;font:11px "Segoe UI";padding:0;}';
@@ -136,7 +139,7 @@
   CSS += 'table.grid td.head{background:#375623;color:#fff;font-weight:700;}';
   CSS += 'table.grid td.sec{background:#c6e0b4;font-weight:700;}';
   CSS += 'table.grid td.tot{background:#e2efda;font-weight:700;}';
-  CSS += 'table.grid td.title{font-size:12px;font-weight:700;color:#375623;}';
+  CSS += 'table.grid td.title{font-size:var(--xl-fs,12px);font-weight:700;color:#375623;}';
   CSS += 'table.grid td.sub{color:#833c0c;font-style:italic;}';
   CSS += 'table.grid td.warn{background:#fff2cc;}';
   CSS += 'table.grid tr:nth-child(even) td:not(.rh):not(.head):not(.sec):not(.tot):not(.title):not(.warn){background:#fafafa;}';
@@ -144,7 +147,7 @@
   CSS += '.pane{width:400px;min-width:180px;flex:none;position:relative;border-left:1px solid #d4d4d4;display:flex;flex-direction:column;background:#fff;padding-left:8px;}';
   CSS += '.pane.hide{display:none;} .pane-resizer{position:absolute;left:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:8;background:#d2d0ce;border-left:1px solid #c8c6c4;border-right:1px solid #c8c6c4;} .pane-resizer:hover,.pane-resizer.on{background:#217346;}';
   CSS += '.pane h3{margin:0;height:28px;display:flex;align-items:center;padding:0 10px;font:12px "Microsoft YaHei";background:#f3f2f1;border-bottom:1px solid #e1dfdd;color:#185c37;}';
-  CSS += '.pane .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:10px 12px;font:13px Calibri,DengXian,"Microsoft YaHei";line-height:1.55;user-select:text;white-space:normal;word-break:break-word;color:#252423;}';
+  CSS += '.pane .body{flex:1;overflow:auto;overscroll-behavior:contain;padding:10px 12px;font-family:Calibri,DengXian,"Microsoft YaHei";font-size:var(--xl-fs,12px);line-height:1.55;user-select:text;white-space:normal;word-break:break-word;color:#252423;}';
   CSS += '.pane .body .qbox{border-left:3px solid #a19f9d;background:#f3f2f1;padding:6px 8px;margin:0 0 10px;color:#605e5c;}';
   CSS += '.pane .body .rbox{border-left:3px solid #217346;padding:0 0 0 8px;margin:0 0 10px;}';
   CSS += '.pane .body .qlab,.pane .body .rlab{font:11px "Microsoft YaHei";color:#217346;margin:0 0 4px;}';
@@ -161,7 +164,7 @@
   CSS += '.imgmenu button{display:block;width:100%;text-align:left;margin:0 0 4px;padding:6px 8px;border:1px solid #d2d0ce;background:#f3f2f1;border-radius:3px;font:12px "Microsoft YaHei";cursor:pointer;}';
   CSS += '.imgmenu button:hover{background:#fff;border-color:#217346;}';
   CSS += 'table.grid td.wrap{white-space:normal;height:auto;padding:1px 4px;overflow:hidden;vertical-align:top;}';
-  CSS += 'table.grid td.wrap .clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:18px;max-height:54px;}';
+  CSS += 'table.grid td.wrap .clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.45;max-height:4.35em;}';
   CSS += 'table.grid tr.wraprow td{height:auto;vertical-align:top;}';
   CSS += '.pane .body a{color:#0563c1;text-decoration:underline;cursor:pointer;word-break:break-all;} .pane .body .imgls b{display:block;margin:8px 0 4px;font:12px "Microsoft YaHei";color:#185c37;}';
   CSS += '.pane .meta{padding:6px 12px;font:11px "Microsoft YaHei";color:#605e5c;border-bottom:1px solid #eee;}';
@@ -211,6 +214,7 @@
   CSS += '.navrow .mini{width:52px;height:22px;border:1px solid #d2d0ce;font:12px Segoe UI;padding:0 4px;}';
   CSS += '.search,.findbar input,.navrow input,.dlg input,.compose input,.compose textarea{user-select:text;}';
   CSS += '.search{color:#252423;}';
+  CSS += '.pane .body .qtxt,.pane .body .rtxt,.cmtls .ctxt,.cmtls .cwho,.cmtls .cmeta,.cmtls .chd,.poll,.poll b,.poll label,.pane .body .imgls b,.pane .meta,.compose .cbody,.compose .ctitle{font-size:var(--xl-fs,12px);}';
   CSS += '.xlnoti{position:fixed;top:64px;right:12px;z-index:85;width:340px;max-height:70vh;overflow:auto;background:#fff;border:1px solid #c8c6c4;box-shadow:0 8px 24px rgba(0,0,0,.18);font:12px "Microsoft YaHei";color:#252423;}';
   CSS += '.xlnoti.off{display:none;}';
   CSS += '.xlnoti .hd{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#f3f2f1;border-bottom:1px solid #e1dfdd;font-weight:600;}';
@@ -577,6 +581,23 @@
   function saveMediaSize() {
     storeSet(LS_MEDIA, String(mediaSize));
   }
+  var fontSize = 12;
+  function loadFontSize() {
+    var cands = storeGet(LS_FONT), i, n;
+    for (i = 0; i < cands.length; i++) {
+      n = parseInt(cands[i], 10);
+      if (FONT_SIZES.indexOf(n) >= 0) return n;
+    }
+    return 12;
+  }
+  function applyFontSize() {
+    if (root) root.style.setProperty('--xl-fs', fontSize + 'px');
+    var sel = shadow && shadow.querySelector('.sizesel');
+    if (sel && String(sel.value) !== String(fontSize)) sel.value = String(fontSize);
+  }
+  function saveFontSize() {
+    storeSet(LS_FONT, String(fontSize));
+  }
   function hydrateLayout() {
     var m = readColsMap(), k;
     for (k in m) {
@@ -590,8 +611,9 @@
     }
     paneWidth = loadPaneW();
     mediaSize = loadMediaSize();
+    fontSize = loadFontSize();
     applyLayoutForView();
-    try { applyColWidths(); applyPaneWidth(); } catch (eH) {}
+    try { applyColWidths(); applyPaneWidth(); applyFontSize(); } catch (eH) {}
   }
   function fillGridToView() {
     if (!shadow) return false;
@@ -610,7 +632,8 @@
       sum += colWidths[ord[i - 1]] || 56;
       cols = i;
     }
-    var rows = Math.max(40, Math.floor(h / 18) + 8);
+    var rowH = Math.max(18, fontSize + 6);
+    var rows = Math.max(40, Math.floor(h / rowH) + 8);
     if (cols === COLS && rows === MIN_ROWS) return false;
     COLS = cols;
     MIN_ROWS = rows;
@@ -3699,7 +3722,7 @@
       '<div class="ribbon">',
       '<div class="rg"><button class="btn">粘贴</button><span class="cap">剪贴板</span></div>',
       '<div class="rg"><select class="sel fontsel"><option>等线</option><option>Calibri</option></select>',
-      '<select class="sel sizesel"><option>11</option><option>12</option></select>',
+      '<select class="sel sizesel">' + FONT_SIZES.map(function (n) { return '<option' + (n === 12 ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select>',
       '<button class="btn b">B</button><button class="btn i">I</button><button class="btn u">U</button></div>',
       '<div class="rg"><button class="btn">左对齐</button><button class="btn">居中</button><button class="btn">右对齐</button></div>',
       '<div class="rg"><select class="sel" style="width:72px"><option>常规</option><option>百分比</option></select></div>',
@@ -4111,7 +4134,17 @@
     });
     shadow.addEventListener('change', function (e) {
       var t = e.target;
-      if (!t || !t.closest || !t.closest('.mediasize') || t.type !== 'range') return;
+      if (!t || !t.closest) return;
+      if (t.classList && t.classList.contains('sizesel')) {
+        var n = parseInt(t.value, 10);
+        if (FONT_SIZES.indexOf(n) < 0) return;
+        fontSize = n;
+        applyFontSize();
+        saveFontSize();
+        if (fillGridToView()) render();
+        return;
+      }
+      if (!t.closest('.mediasize') || t.type !== 'range') return;
       saveMediaSize();
     });
     var search = shadow.querySelector('.search');
