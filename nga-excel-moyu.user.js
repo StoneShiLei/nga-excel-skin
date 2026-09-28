@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.33
+// @version      1.10.34
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -3272,40 +3272,70 @@
     document.body.appendChild(f);
     f.submit();
   }
+  function postJumpHref(text, opts) {
+    var t = String(text || '').replace(/&amp;/g, '&');
+    var abs = t.match(/https?:\/\/[^"'\s<>]*read\.php\?[^"'\s<>]*tid=\d+[^"'\s<>]*/i);
+    if (abs) return abs[0];
+    var rel = t.match(/read\.php\?[^"'\s<>]*tid=\d+[^"'\s<>]*/i);
+    if (rel) {
+      try { return new URL(rel[0], originRoot() + '/').href; } catch (eJ) {}
+    }
+    opts = opts || {};
+    if (opts.tid) return originRoot() + '/read.php?tid=' + encodeURIComponent(opts.tid) + '&page=9999&rand=' + Date.now();
+    return location.href;
+  }
+  function postGbk(fields) {
+    return new Promise(function (resolve, reject) {
+      var frame = document.createElement('iframe');
+      frame.setAttribute('style', 'position:absolute;left:-9999px;width:1px;height:1px;border:0;');
+      document.body.appendChild(frame);
+      var done = false;
+      function finish(ok, text) {
+        if (done) return;
+        done = true;
+        try { frame.parentNode.removeChild(frame); } catch (eRm) {}
+        if (ok) resolve(text || '');
+        else reject(new Error(text || 'fail'));
+      }
+      var sent = false;
+      frame.onload = function () {
+        if (!sent) return;
+        var text = '';
+        try { text = (frame.contentDocument && frame.contentDocument.body && frame.contentDocument.body.innerText) || ''; } catch (eRd) { text = ''; }
+        var blob = text.replace(/\s+/g, ' ');
+        if (/验证码/.test(blob) && !/完毕|成功/.test(blob)) { finish(false, 'vcode'); return; }
+        if (/请先登录|未登录/.test(blob)) { finish(false, 'login'); return; }
+        if (/请先阅读版规|同意版规|尚未同意/.test(blob)) { finish(false, 'rule'); return; }
+        try {
+          if (frame.contentDocument && frame.contentDocument.querySelector('[id^="postcontent"], a.topic')) { finish(true, text); return; }
+        } catch (eOk) {}
+        if (/完毕|成功/.test(blob) && !/失败/.test(blob)) { finish(true, text); return; }
+        if (/ERROR|错误|失败/.test(blob)) { finish(false, blob.slice(0, 80) || 'fail'); return; }
+        if (blob) { finish(true, text); return; }
+        finish(false, 'fail');
+      };
+      var doc = frame.contentDocument;
+      if (!doc) { finish(false, 'fail'); return; }
+      doc.open();
+      doc.write('<!DOCTYPE html><html><head><meta charset="GBK"></head><body><form method="POST" accept-charset="GBK" action="' + originRoot() + '/post.php"></form></body></html>');
+      doc.close();
+      var form = doc.forms[0];
+      Object.keys(fields || {}).forEach(function (k) {
+        var val = fields[k];
+        if (val == null || val === '') return;
+        var el = doc.createElement(k === 'post_content' || k === 'post_subject' ? 'textarea' : 'input');
+        el.name = k;
+        el.value = String(val);
+        form.appendChild(el);
+      });
+      setTimeout(function () { if (!sent) return; finish(false, 'timeout'); }, 20000);
+      sent = true;
+      form.submit();
+    });
+  }
   function submitNga(opts) {
-    var form = findNgaForm();
-    var ta = findNgaContent(form);
-    var titleInp = findNgaTitle(form);
     var att = composeHold.attachments.join('\t') + (composeHold.attachments.length ? '\t' : '');
     var chk = composeHold.checks.join('\t') + (composeHold.checks.length ? '\t' : '');
-    function applyAttach(target, setter) {
-      if (att) setter(target, 'attachments', att);
-      if (chk) setter(target, 'attachments_check', chk);
-    }
-    if (form && ta && !opts.comment && opts.action !== 'modify' && (opts.tid || !opts.title || titleInp)) {
-      ta.value = opts.content;
-      if (titleInp && opts.title) titleInp.value = opts.title;
-      var pidInp = form.querySelector('[name="pid"]');
-      if (pidInp && opts.pid) pidInp.value = opts.pid;
-      var actInp = form.querySelector('[name="action"]');
-      if (actInp && opts.action) actInp.value = opts.action;
-      applyAttach(form, function (f, name, val) {
-        var el = f.querySelector('[name="' + name + '"]');
-        if (!el) { el = document.createElement('input'); el.type = 'hidden'; el.name = name; f.appendChild(el); }
-        el.value = (el.value || '') + val;
-      });
-      if (opts.vcode) {
-        var vcEl = form.querySelector('[name="vcode"], [name="captcha"], [name="check_code"]');
-        if (vcEl) vcEl.value = opts.vcode;
-      }
-      Array.prototype.forEach.call(form.querySelectorAll('input[type="checkbox"]'), function (cb) {
-        if (/agree|rule|read|tos/i.test((cb.name || '') + (cb.id || ''))) cb.checked = true;
-      });
-      var btn = form.querySelector('#postsubmit, #post_submit, input[type="submit"], button[type="submit"]');
-      if (btn) btn.click();
-      else form.submit();
-      return Promise.resolve();
-    }
     return getPostData(opts).then(function (x) {
       var d = x.data || {};
       var fields = {
@@ -3315,6 +3345,7 @@
         pid: opts.pid || d.pid || '',
         post_subject: opts.title || d.subject || '',
         post_content: opts.content || '',
+        auth: d.auth || '',
         nojump: 1,
         lite: 'htmljs',
         step: 2
@@ -3323,29 +3354,8 @@
       if (att) fields.attachments = att;
       if (chk) fields.attachments_check = chk;
       if (opts.vcode) fields.per_check_code = opts.vcode;
-      return httpReq({
-        method: 'POST',
-        url: originRoot() + '/post.php?',
-        body: formBody(fields),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }
-      }).then(function (r) {
-        var obj = parseNuke(r.text);
-        var msg = nukeMsg(obj, r.text);
-        var blob = (r.text || '') + ' ' + msg;
-        if (/请先登录|未登录/.test(blob)) throw new Error('login');
-        if (/请先阅读版规|同意版规|尚未同意/.test(blob)) throw new Error('rule');
-        if (/验证码|check_code|vcode|per_check/.test(blob) && !opts.vcode && !/完毕|成功|支持|反对/.test(blob)) {
-          var err2 = new Error('vcode');
-          throw err2;
-        }
-        if (obj && obj.data && obj.data.__MESSAGE) {
-          var mm = obj.data.__MESSAGE;
-          var mmsg = typeof mm === 'string' ? mm : String(mm[1] || mm[0] || '');
-          if (!/完毕|成功/.test(mmsg)) throw new Error(mmsg || 'fail');
-        }
-        var fail = nukeFail(obj, msg);
-        if (fail) throw new Error(fail);
-        return { obj: obj, text: r.text, msg: msg };
+      return postGbk(fields).then(function (text) {
+        return { text: text, msg: 'ok' };
       });
     });
   }
@@ -3417,7 +3427,7 @@
       opts.comment = 1;
       opts.pid = pv.pid || '';
     }
-    submitNga(opts).then(function () {
+    submitNga(opts).then(function (res) {
       composeStat('Saved');
       bodyEl.value = '';
       if (titleEl) titleEl.value = '';
@@ -3428,7 +3438,8 @@
       composeHold.comment = 0;
       showVcode(null);
       clearDraft();
-      silentGo(location.href, { replace: 1, reload: 1, force: 1 });
+      state.feedKey = '';
+      silentGo(postJumpHref(res && res.text, opts), { replace: 1, reload: 1, force: 1 });
     }).catch(function (e) {
       var msg = (e && e.message) ? String(e.message) : '';
       if (e && e.vcode) { showVcode(e.vcode); composeStat('Verify'); return; }
