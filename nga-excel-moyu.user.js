@@ -1,7 +1,7 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.40
+// @version      1.10.42
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -247,6 +247,40 @@
     lastFid: ''
   };
 
+  var histOwn = 0;
+  function pageParamOnly(url) {
+    try {
+      var next = new URL(url, location.href);
+      var cur = new URL(location.href);
+      if (next.origin !== cur.origin || next.pathname !== cur.pathname) return false;
+      var names = {};
+      cur.searchParams.forEach(function (v, k) { names[k] = 1; });
+      next.searchParams.forEach(function (v, k) { names[k] = 1; });
+      var k, differ = false;
+      for (k in names) {
+        if (!names.hasOwnProperty(k)) continue;
+        if ((cur.searchParams.get(k) || '') === (next.searchParams.get(k) || '')) continue;
+        if (String(k).toLowerCase() === 'page') { differ = true; continue; }
+        return false;
+      }
+      return differ;
+    } catch (ePg) { return false; }
+  }
+  function lockPageHistory() {
+    if (window.__xlHistLock) return;
+    window.__xlHistLock = 1;
+    function wrap(orig) {
+      return function (st, title, url) {
+        if (!histOwn && state && state.mode !== 'off' && url && pageParamOnly(url)) return;
+        return orig.apply(history, arguments);
+      };
+    }
+    try {
+      history.replaceState = wrap(history.replaceState);
+      history.pushState = wrap(history.pushState);
+    } catch (eLock) {}
+  }
+  lockPageHistory();
   var host, shadow, root, bootStyle;
 
   function $(sel, el) { return (el || shadow).querySelector(sel); }
@@ -754,10 +788,12 @@
       snapshotLayout(layoutView);
     } catch (eSnap) {}
     try {
+      histOwn++;
       if (opt.history === "none") {}
       else if (opt.replace) history.replaceState({ xl: 1 }, "", href);
       else history.pushState({ xl: 1 }, "", href);
     } catch (eH) {}
+    finally { histOwn--; }
     try { if (state) state.isRead = isReadPage(); } catch (eIs) {}
     try { applyLayoutForView(); } catch (eAl) {}
     lastSig = "";
