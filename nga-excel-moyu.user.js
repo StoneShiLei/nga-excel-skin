@@ -1,7 +1,7 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.40
+// @version      1.10.41
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -1447,7 +1447,7 @@
       if (!row || !row.tid) continue;
       prev = state.listFeed.seen[row.tid];
       if (prev && typeof prev === 'object') {
-        if ((!prev.time || prev.time === '-') && row.time && row.time !== '-') prev.time = row.time;
+        if (row.time && row.time !== '-' && (!prev.time || prev.time === '-' || /^\d{2}-\d{2}-\d{2}/.test(row.time))) prev.time = row.time;
         if ((!prev.author || prev.author === '-') && row.author && row.author !== '-') prev.author = row.author;
         if (!prev.replies && row.replies) prev.replies = row.replies;
         continue;
@@ -2334,6 +2334,13 @@
     if (!m) return abs || shown;
     return m[2] + '-' + m[3] + (m[4] ? ' ' + m[4] : '');
   }
+  function replyStamp(ts) {
+    ts = parseInt(ts, 10) || 0;
+    if (!ts) return '';
+    var d = new Date(ts * 1000);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return String(d.getFullYear()).slice(-2) + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
   function listTimeMap(root) {
     var map = {};
     if (!root || !root.querySelectorAll) return map;
@@ -2371,12 +2378,17 @@
       if (tr) {
         replies = textOf(tr.querySelector('.replies, td.c2')).replace(/[^\d]/g, '');
         author = textOf(tr.querySelector('a.author, td.c4 a, .posterinfo a'));
-        var rd = tr.querySelector('a.replydate, .replydate');
+        var rd = tr.querySelector('a.replydate');
         if (rd) time = replyShown(rd);
-        time = time.slice(0, 22);
       }
       var info = timeMap[tid];
-      if ((!time || time === '-') && info && info.last) time = notiWhen(info.last);
+      if (info && info.last) time = replyStamp(info.last);
+      else if (tr) {
+        var rdTitle = tr.querySelector('a.replydate');
+        var abs = rdTitle && (rdTitle.getAttribute('title') || '');
+        if (abs && /^\d{2}-\d{2}-\d{2}/.test(abs)) time = abs;
+      }
+      time = String(time || '').slice(0, 22);
       if (!replies && info && info.replies) replies = String(info.replies);
       var repliesN = parseInt(replies, 10) || 0;
       var authorHref = '';
