@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.42
+// @version      1.10.43
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
 // @author       moyu
@@ -177,6 +177,7 @@
   CSS += '.compose .cstat{font:11px "Microsoft YaHei";color:#605e5c;}';
   CSS += '.compose .sp{flex:1;}';
   CSS += '.compose .send{background:#185c37;color:#fff;border:none;height:22px;padding:0 12px;border-radius:3px;}';
+  CSS += '.compose .send:disabled{opacity:.45;cursor:default;}';
   CSS += '.compose input,.compose textarea{user-select:text;} .compose .cfile{width:0;height:0;opacity:0;position:absolute;}';
   CSS += '.compose [data-compose="quote"].off{display:none;}';
   CSS += '.sheets{height:30px;display:flex;align-items:stretch;background:#f3f2f1;border-top:1px solid #d0d0d0;}';
@@ -819,7 +820,7 @@
     navBusy = true;
     navPending = '';
     composeStat(opt.reload ? "Refresh..." : "Opening...");
-    httpReq({ url: href, html: 1 }).then(function (r) {
+    httpReq({ url: href, html: 1, reload: opt.reload ? 1 : 0 }).then(function (r) {
       if (!r || r.status >= 400) throw new Error("http");
       var landed = r.url || href;
       var dest = unwrapAdHref(landed);
@@ -1206,6 +1207,32 @@
     }
     composeStat('No board');
   }
+  function actOpOnly() {
+    var tid = currentTid();
+    var uid = '';
+    var preview = state.meta && state.meta.preview;
+    var floor = 1e9, k, pv;
+    if (preview) {
+      for (k in preview) {
+        if (!preview.hasOwnProperty(k)) continue;
+        pv = preview[k];
+        if (!pv || pv.floor == null || !pv.uid) continue;
+        if (pv.floor < floor) { floor = pv.floor; uid = String(pv.uid); }
+      }
+    }
+    if (!uid) {
+      var a = document.querySelector('#postauthor0, a[id^="postauthor0"]');
+      var href = a ? ((a.getAttribute('href') || '') + ' ' + (a.href || '')) : '';
+      var um = href.match(/uid=(\d+)/i);
+      if (um) uid = um[1];
+    }
+    if (!tid || !uid) { composeStat('没有楼主'); return; }
+    if (String(qsGet('authorid') || '') === String(uid)) {
+      goTo(originRoot() + '/read.php?tid=' + encodeURIComponent(tid));
+      return;
+    }
+    goTo(originRoot() + '/read.php?tid=' + encodeURIComponent(tid) + '&authorid=' + encodeURIComponent(uid));
+  }
   function actMyTopics() {
     var uid = currentUid();
     if (!uid) { composeStat('Sign-in'); return; }
@@ -1221,6 +1248,7 @@
     }
     else if (act === 'back') goTo(state.nav && state.nav.back);
     else if (act === 'owner') actOwnerFilter();
+    else if (act === 'op') actOpOnly();
     else if (act === 'digest') toggleDigest();
     else if (act === 'last') gotoLast();
     else if (act === 'cols') resetColOrder();
@@ -1306,7 +1334,7 @@
       });
     }
     if (opts.forceGM) return viaGM();
-    return fetch(url, { method: method, credentials: 'include', body: body, headers: headers, redirect: 'follow' }).then(function (r) {
+    return fetch(url, { method: method, credentials: 'include', body: body, headers: headers, redirect: 'follow', cache: opts.reload ? 'no-store' : 'default' }).then(function (r) {
       var ct = '';
       try { ct = r.headers.get('content-type') || ''; } catch (eH) {}
       return r.arrayBuffer().then(function (buf) {
@@ -2042,10 +2070,10 @@
     }).catch(function (e) { composeStat(String(e.message || e)); });
   }
   function actLike() {
-    doRecommend(false, 'Score +');
+    doRecommend(false, '已点赞');
   }
   function actScore(v) {
-    doRecommend(v < 0, v < 0 ? 'Fail +' : 'Pass +');
+    doRecommend(v < 0, '已踩');
   }
   function actFavor() {
     var x = voteTidPid();
@@ -2886,6 +2914,8 @@
     }
     var pi = root.getElementById ? root.getElementById('posterinfo' + idx) : document.getElementById('posterinfo' + idx);
     if (pi) chrome.push(pi);
+    var rv = (box && box.querySelector && box.querySelector('.recommendvalue')) || (pi && pi.querySelector && pi.querySelector('.recommendvalue'));
+    if (rv) like = Math.max(like, intOrZero(rv.textContent));
     if (!chrome.length && box) {
       var cl = box.cloneNode(true);
       Array.prototype.forEach.call(cl.querySelectorAll('[id^="postcontent"], .postcontent, .sign, .signature, .quote, blockquote'), function (n) {
@@ -2924,7 +2954,7 @@
   function postHtml(parts, imgs, votes) {
     var html = '';
     if (votes) {
-      html += '<div class="votes"><button type="button" data-act="like"><b>Score</b>' + votes.like + '</button><button type="button" data-act="up"><b>Pass</b>' + votes.up + '</button><button type="button" data-act="down"><b>Fail</b>' + votes.down + '</button></div>';
+      html += '<div class="votes"><button type="button" data-act="like">点赞 ' + votes.like + '</button><button type="button" data-act="down">踩</button></div>';
     }
     var qs = (parts && parts.quotes) || [];
     for (var i = 0; i < qs.length; i++) {
@@ -3312,7 +3342,7 @@
     var meta = '';
     if (pv) {
       meta = 'Jira · ' + (pv.title || '');
-      if (pv.votes) meta += ' · Score ' + pv.votes.like + ' · Pass ' + pv.votes.up + ' · Fail ' + pv.votes.down;
+      if (pv.votes) meta += ' · 点赞 ' + (pv.votes.like || 0);
     }
     $('.pane .meta').textContent = meta;
     applyMediaSize();
@@ -3432,9 +3462,13 @@
       var sent = false;
       frame.onload = function () {
         if (!sent) return;
+        var here = '';
+        try { here = frame.contentWindow.location.href || ''; } catch (eLoc) { here = ''; }
+        if (!here || /about:blank/i.test(here)) return;
         var text = '';
         try { text = (frame.contentDocument && frame.contentDocument.body && frame.contentDocument.body.innerText) || ''; } catch (eRd) { text = ''; }
         var blob = text.replace(/\s+/g, ' ');
+        if (/read\.php/i.test(here) && /tid=\d+/.test(here)) { finish(true, text || here); return; }
         if (/验证码/.test(blob) && !/完毕|成功/.test(blob)) { finish(false, 'vcode'); return; }
         if (/请先登录|未登录/.test(blob)) { finish(false, 'login'); return; }
         if (/请先阅读版规|同意版规|尚未同意/.test(blob)) { finish(false, 'rule'); return; }
@@ -3527,15 +3561,19 @@
     composeStat('');
   }
   function composeSend() {
+    if (composeHold.sending) return;
     var titleEl = shadow && shadow.querySelector('.compose .ctitle');
     var bodyEl = shadow && shadow.querySelector('.compose .cbody');
     if (!bodyEl) return;
     var content = (bodyEl.value || '').trim();
     var read = !!(state.meta && state.meta.isRead);
     var title = (!read && titleEl) ? (titleEl.value || '').trim() : '';
-    if (!content) { composeStat('Empty'); return; }
-    if (!read && !title) { composeStat('Need Summary'); return; }
-    composeStat('Saving...');
+    if (!content) { composeStat('写点内容'); return; }
+    if (!read && !title) { composeStat('先写标题'); return; }
+    composeHold.sending = 1;
+    var sendBtn = shadow.querySelector('.compose .send');
+    if (sendBtn) sendBtn.disabled = true;
+    composeStat('发送中');
     var pv = state.meta.preview[state.selR] || {};
     var vcode = '';
     var vcInp = shadow.querySelector('.compose .vcode');
@@ -3559,8 +3597,12 @@
       opts.comment = 1;
       opts.pid = pv.pid || '';
     }
+    var posted = false;
     submitNga(opts).then(function (res) {
-      composeStat('Saved');
+      posted = true;
+      var jump = location.href;
+      if (opts.action !== 'modify' && !opts.comment && opts.tid) jump = originRoot() + '/read.php?tid=' + encodeURIComponent(opts.tid) + '&page=9999';
+      else if (!opts.tid) jump = postJumpHref(res && res.text, opts);
       bodyEl.value = '';
       if (titleEl) titleEl.value = '';
       composeHold.attachments = [];
@@ -3570,8 +3612,10 @@
       composeHold.comment = 0;
       showVcode(null);
       clearDraft();
+      composeStat('已发送');
       state.feedKey = '';
-      silentGo(postJumpHref(res && res.text, opts), { replace: 1, reload: 1, force: 1 });
+      state.listKey = '';
+      silentGo(jump, { replace: 1, reload: 1, force: 1 });
     }).catch(function (e) {
       var msg = (e && e.message) ? String(e.message) : '';
       if (e && e.vcode) { showVcode(e.vcode); composeStat('Verify'); return; }
@@ -3579,6 +3623,11 @@
       if (msg === 'login') { showLoginDlg(); composeStat('Sign-in'); return; }
       if (msg === 'rule') { showRuleDlg(); return; }
       composeStat(msg || 'Failed · F10');
+    }).then(function () {
+      if (posted) return;
+      composeHold.sending = 0;
+      var btn = shadow && shadow.querySelector('.compose .send');
+      if (btn) btn.disabled = false;
     });
   }
   function syncCompose() {
@@ -3797,7 +3846,7 @@
       '<button type="button" data-file="mine">我的主题</button>',
       '<button type="button" data-file="noti">提醒信息</button>',
       '<button type="button" data-file="back">返回列表</button>',
-      '<button type="button" data-file="owner">只看该作者</button>',
+      '<button type="button" data-file="owner">只看该作者</button><button type="button" data-file="op">只看楼主</button>',
       '<button type="button" data-file="digest">精华区</button>',
       '<button type="button" data-file="cols">重置列序</button>',
       '<button type="button" data-file="last">转到末页</button>',
@@ -3838,7 +3887,7 @@
       '</div>',
       '<div class="findbar off"><span>Find</span><input /><button type="button" class="btn" data-find="prev">↑</button><button type="button" class="btn" data-find="next">↓</button><span class="fstat">0/0</span><button type="button" class="btn" data-find="close">×</button></div>',
       '<div class="main"><div class="gridwrap"><table class="grid"></table></div>',
-      '<div class="pane hide"><div class="pane-resizer"></div><h3>明细</h3><div class="meta"></div><div class="actrow"><button type="button" class="btn" data-act="like">Score</button><button type="button" class="btn" data-act="up">Pass</button><button type="button" class="btn" data-act="down">Fail</button><button type="button" class="btn" data-act="favor">Pin</button><button type="button" class="btn" data-act="author">Assignee</button><button type="button" class="btn" data-act="owner">Owner</button><button type="button" class="btn" data-act="edit">Revise</button><button type="button" class="btn" data-act="del">Remove</button></div><div class="body">选择一条记录</div><div class="compose"><div class="chd">Comment</div><input class="ctitle off" placeholder="Summary" /><textarea class="cbody" placeholder="Add a comment..."></textarea><div class="vrow off"><img class="vimg" alt=""><input class="vcode" placeholder="Verify"></div><div class="crow"><button type="button" class="btn" data-compose="quote">From row</button><button type="button" class="btn" data-compose="comment">Subtask</button><button type="button" class="btn" data-compose="attach">Attach</button><input type="file" class="cfile" accept="image/*,.zip,.rar,.7z,.txt,.pdf" /><span class="cstat"></span><span class="sp"></span><button type="button" class="send" data-compose="send">Save</button></div></div></div></div>',
+      '<div class="pane hide"><div class="pane-resizer"></div><h3>明细</h3><div class="meta"></div><div class="actrow"><button type="button" class="btn" data-act="like">点赞</button><button type="button" class="btn" data-act="down">踩</button><button type="button" class="btn" data-act="op">只看楼主</button><button type="button" class="btn" data-act="owner">只看该作者</button></div><div class="body">选择一条记录</div><div class="compose"><div class="chd">Comment</div><input class="ctitle off" placeholder="Summary" /><textarea class="cbody" placeholder="Add a comment..."></textarea><div class="vrow off"><img class="vimg" alt=""><input class="vcode" placeholder="Verify"></div><div class="crow"><button type="button" class="btn" data-compose="quote">From row</button><button type="button" class="btn" data-compose="comment">Subtask</button><button type="button" class="btn" data-compose="attach">Attach</button><input type="file" class="cfile" accept="image/*,.zip,.rar,.7z,.txt,.pdf" /><span class="cstat"></span><span class="sp"></span><button type="button" class="send" data-compose="send">Save</button></div></div></div></div>',
       '<div class="dlg off" id="xl-dlg"><div class="dlgbox"><h4 class="dlgt"></h4><div class="dlgb"></div><div class="dlgf"></div></div></div>',
       '<div class="sheets">',
       '<div class="stab" data-sheet="pl">接口核对</div>',
@@ -4018,6 +4067,7 @@
         if (actn === 'favor') actFavor();
         if (actn === 'author') actAuthor();
         if (actn === 'owner') actOwnerFilter();
+        if (actn === 'op') actOpOnly();
         if (actn === 'edit') actEdit();
         if (actn === 'del') actDel();
         if (actn === 'vote') {
