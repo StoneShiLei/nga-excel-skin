@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.43
+// @version      1.10.44
 // @charset      UTF-8
-// @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版。
+// @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版，Alt+N 夜间模式。
 // @author       moyu
 // @match        https://ngabbs.com/*
 // @match        https://*.ngabbs.com/*
@@ -88,6 +88,7 @@
   var LS_DRAFT = 'nga-xl-draft';
   var LS_SUB = 'nga-xl-subpick';
   var LS_FONT = 'nga-xl-font';
+  var LS_NIGHT = 'nga-xl-night';
   var FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72];
 
   var CSS = '';
@@ -231,6 +232,58 @@
   CSS += '.xlnoti .more,.xlnoti .ft{padding:6px 8px;border-top:1px solid #eee;}';
   CSS += '.xlnoti .more.off{display:none;}';
   CSS += '.xlnoti .ft{color:#605e5c;} .xlnoti .ft .gap{margin-left:8px;}';
+  CSS += '.app.night{color:#e6e6e6;background:#1f1f1e;color-scheme:dark;}';
+  CSS += '.app.night .appbar,.app.night .rtabs,.app.night .formula,.app.night .main,.app.night .gridwrap,.app.night .pane,.app.night .filemenu,.app.night .imgmenu,.app.night .dlgbox,.app.night .xlnoti,.app.night .subpop{background:#1f1f1e;color:#e6e6e6;}';
+  CSS += '.app.night .ribbon,.app.night .sheets,.app.night .pane h3,.app.night .xlnoti .hd,.app.night .filebtn:hover,.app.night .filebtn.on,.app.night .fname:hover{background:#2a2a28;}';
+  CSS += '.app.night .navrow,.app.night .compose,.app.night table.grid tr:nth-child(even) td:not(.rh):not(.head):not(.sec):not(.tot):not(.title):not(.warn):not(.pinhead):not(.sel):not(.findhit){background:#262624;}';
+  CSS += '.app.night .appbar,.app.night .ribbon,.app.night .formula,.app.night .namebox,.app.night .fx,.app.night .pane,.app.night .pane h3,.app.night .navrow,.app.night .compose,.app.night .sheets,.app.night .actrow,.app.night .rg{border-color:#3a3a38;}';
+  CSS += '.app.night .filemenu,.app.night .imgmenu,.app.night .dlgbox,.app.night .xlnoti,.app.night .subpop{border-color:#5c5c58;}';
+  CSS += '.app.night .filemenu .sep,.app.night .pane .body .votes,.app.night .cmtls,.app.night .poll,.app.night .xlnoti .nrow,.app.night .xlnoti .more,.app.night .xlnoti .ft{border-color:#3a3a38;}';
+  CSS += '.app.night .filemenu button,.app.night .btn,.app.night .stab,.app.night .rtab,.app.night .namebox,.app.night .search{color:#e6e6e6;}';
+  CSS += '.app.night .filemenu button:hover{background:#2e4a38;}';
+  CSS += '.app.night .btn:hover,.app.night .stab:hover,.app.night .imgmenu button:hover,.app.night .pane .body .votes button:hover,.app.night .xlnoti .hd button:hover,.app.night .xlnoti .ft button:hover,.app.night .xlnoti .more button:hover{background:#333330;border-color:#5c5c58;}';
+  CSS += '.app.night .rtab.on,.app.night .fx,.app.night .pane h3,.app.night .pane .body .qlab,.app.night .pane .body .rlab,.app.night .pane .body .imgls b,.app.night .pane .body .mediasize b,.app.night .compose .chd,.app.night .navrow #xl-title,.app.night .cmtls .chd,.app.night .cmtls .cwho,.app.night .poll b,.app.night .dlgbox h4,.app.night .stab.on,.app.night table.grid td.pinhead{color:#8fd4a4;}';
+  CSS += '.app.night .rg .cap,.app.night .navrow .lab,.app.night .pane .meta,.app.night .pane .body .votes,.app.night .pane .body .qbox,.app.night .compose .cstat,.app.night .imgmenu .url,.app.night .xlnoti .ft,.app.night .xlnoti .silver,.app.night .xlnoti a.stop,.app.night .cmtls .cmeta,.app.night .cmtls .cwho span,.app.night .pane .body .mediasize{color:#b0b0ae;}';
+  CSS += '.app.night .search,.app.night .findbar input,.app.night .navrow select,.app.night .navrow .mini,.app.night .ribbon .sel,.app.night .compose .ctitle,.app.night .compose .cbody,.app.night .compose .vcode,.app.night .dlg input,.app.night #xl-subbtn,.app.night .imgmenu button,.app.night .pane .body .votes button,.app.night .xlnoti .hd button,.app.night .xlnoti .ft button,.app.night .xlnoti .more button{background:#2a2a28;color:#e6e6e6;border-color:#5c5c58;}';
+  CSS += '.app.night input::placeholder,.app.night textarea::placeholder{color:#8d8d8a;}';
+  CSS += '.app.night table.grid th{background:#2a2a28;color:#c8c8c6;border-color:#3a3a38;}';
+  CSS += '.app.night table.grid td{background:#1f1f1e;color:#e6e6e6;border-color:#3a3a38;}';
+  CSS += '.app.night table.grid td.rh,.app.night table.grid th.rh{background:#2a2a28;color:#b0b0ae;}';
+  CSS += '.app.night table.grid td.head{background:#1e4630;color:#f2f7f3;}';
+  CSS += '.app.night table.grid td.sec{background:#2c4636;color:#e6e6e6;}';
+  CSS += '.app.night table.grid td.tot{background:#24382c;color:#e6e6e6;}';
+  CSS += '.app.night table.grid td.warn,.app.night table.grid td.findhit{background:#3d3420 !important;color:#f3e6b8;}';
+  CSS += '.app.night table.grid td.title{color:#9dcea8;}';
+  CSS += '.app.night table.grid td.sub{color:#e0a36a;}';
+  CSS += '.app.night table.grid td.link,.app.night .pane .body a{color:#79b8f5;}';
+  CSS += '.app.night table.grid td.pct{color:#9ec0e0;}';
+  CSS += '.app.night table.grid td.neg{color:#ff8d8d;}';
+  CSS += '.app.night table.grid td.pinhead{background:#24382c;}';
+  CSS += '.app.night table.grid tr.selrow td:not(.rh){background:#24382c;}';
+  CSS += '.app.night table.grid td.sel{background:#2d4a38 !important;box-shadow:inset 0 0 0 2px #6fbf8a;}';
+  CSS += '.app.night .pane .body{color:#e6e6e6;}';
+  CSS += '.app.night .pane .body .qbox,.app.night .pane .body .mediasize,.app.night .cmtls .cmt{background:#2a2a28;border-color:#5c5c58;}';
+  CSS += '.app.night .pane .body .rbox{border-left-color:#4ea86a;}';
+  CSS += '.app.night .cmtls .ctxt,.app.night .poll,.app.night .poll label{color:#e6e6e6;}';
+  CSS += '.app.night .findbar{background:#3d3420;color:#f3e6b8;border-bottom-color:#3a3a38;}';
+  CSS += '.app.night .dlg{background:rgba(0,0,0,.5);}';
+  CSS += '.app.night .dlgbox div{color:#c8c8c6 !important;}';
+  CSS += '.app.night .dlg .btn{color:#e6e6e6;}';
+  CSS += '.app.night .dlg .send,.app.night .compose .send{color:#fff;}';
+  CSS += '.app.night .imgmenu img.tiny{background:#2a2a28;border-color:#3a3a38;}';
+  CSS += '.app.night .xlnoti a.go{color:#8fd4a4;}';
+  CSS += '.app.night .xlnoti .nrow:nth-child(even){background:#262624;}';
+  CSS += '.app.night .pane-resizer{background:#3a3a38;border-color:#4a4a48;}';
+  CSS += '.app.night .pane-resizer:hover,.app.night .pane-resizer.on{background:#4ea86a;}';
+  CSS += '.app.night .ribbon .btn.on{background:#24382c;border-color:#4ea86a;color:#d7f5e2;}';
+  CSS += '.app.night .stab{border-right-color:#3a3a38;}';
+  CSS += '.app.night .stab.on{background:#1f1f1e;border-top-color:#4ea86a;}';
+  CSS += '.app.night .gridwrap,.app.night .pane .body,.app.night .xlnoti,.app.night .subpop{color-scheme:dark;scrollbar-color:#5c5c58 #1f1f1e;}';
+  CSS += '.app.night ::selection{background:#2d4a38;color:#f2f7f3;}';
+  CSS += '.app.night .filemenu .sep{background:#3a3a38;}';
+  CSS += '.app.night .fname:hover{border-color:#3a3a38;}';
+  CSS += '.app.night .pane .body .votes b{color:#8a8a88;}';
+  CSS += '.app.night option{background:#2a2a28;color:#e6e6e6;}';
 
   var COL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var state = {
@@ -633,6 +686,41 @@
   function saveFontSize() {
     storeSet(LS_FONT, String(fontSize));
   }
+
+  var nightOn = false;
+  function loadNight() {
+    var cands = storeGet(LS_NIGHT), i, v;
+    for (i = 0; i < cands.length; i++) {
+      v = cands[i];
+      if (v == null || v === '') continue;
+      v = String(v).replace(/"/g, '');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    }
+    return false;
+  }
+  function applyNight() {
+    if (root) root.classList.toggle('night', !!nightOn);
+    if (host) host.style.setProperty('background', nightOn ? '#1f1f1e' : '#fff', 'important');
+    try { document.documentElement.classList.toggle('nga-xl-night', !!nightOn); } catch (eNight) {}
+    if (!shadow) return;
+    var nodes = shadow.querySelectorAll('[data-file="night"]');
+    var i, el, ribbon;
+    for (i = 0; i < nodes.length; i++) {
+      el = nodes[i];
+      ribbon = el.classList && el.classList.contains('btn');
+      el.textContent = ribbon ? (nightOn ? '日间' : '夜间') : (nightOn ? '日间模式' : '夜间模式');
+      if (ribbon) el.classList.toggle('on', nightOn);
+    }
+  }
+  function saveNight() {
+    storeSet(LS_NIGHT, nightOn ? '1' : '0');
+  }
+  function toggleNight() {
+    nightOn = !nightOn;
+    applyNight();
+    saveNight();
+  }
   function hydrateLayout() {
     var m = readColsMap(), k;
     for (k in m) {
@@ -647,8 +735,9 @@
     paneWidth = loadPaneW();
     mediaSize = loadMediaSize();
     fontSize = loadFontSize();
+    nightOn = loadNight();
     applyLayoutForView();
-    try { applyColWidths(); applyPaneWidth(); applyFontSize(); } catch (eH) {}
+    try { applyColWidths(); applyPaneWidth(); applyFontSize(); applyNight(); } catch (eH) {}
   }
   function fillGridToView() {
     if (!shadow) return false;
@@ -1252,6 +1341,7 @@
     else if (act === 'digest') toggleDigest();
     else if (act === 'last') gotoLast();
     else if (act === 'cols') resetColOrder();
+    else if (act === 'night') toggleNight();
     else if (act === 'off') setMode('off');
   }
   var composeHold = { attachments: [], checks: [], urls: [], edit: null, comment: 0, vcodeUrl: '', vcodeName: 'vcode' };
@@ -3851,6 +3941,7 @@
       '<button type="button" data-file="cols">重置列序</button>',
       '<button type="button" data-file="last">转到末页</button>',
       '<div class="sep"></div>',
+      '<button type="button" data-file="night">夜间模式</button>',
       '<button type="button" data-file="off">显示原版 (F10)</button>',
       '</div>',
       '<div class="rtabs">',
@@ -3865,7 +3956,7 @@
       '<button class="btn b">B</button><button class="btn i">I</button><button class="btn u">U</button></div>',
       '<div class="rg"><button class="btn">左对齐</button><button class="btn">居中</button><button class="btn">右对齐</button></div>',
       '<div class="rg"><select class="sel" style="width:72px"><option>常规</option><option>百分比</option></select></div>',
-      '<div class="rg"><button class="btn" data-file="reload">刷新</button><button class="btn" data-file="digest">筛选</button><button class="btn" data-findopen="1">查找</button></div>',
+      '<div class="rg"><button class="btn" data-file="reload">刷新</button><button class="btn" data-file="digest">筛选</button><button class="btn" data-findopen="1">查找</button><button class="btn" data-file="night">夜间</button></div>',
       '</div>',
       '<div class="formula"><div class="namebox">A1</div><div class="fx">fx</div><div class="fxinput"></div></div>',
       '<div class="navrow">',
@@ -3897,7 +3988,7 @@
       '<div class="sstat"><span class="avg">就绪</span><span>筛选</span><span>100%</span></div>',
       '</div>',
       '<div class="xlnoti off" id="xl-noti"><div class="hd"><span>提醒信息</span><button type="button" data-noti="close">×</button></div><div class="bd"></div><div class="more off">有更多的提醒未显示 <button type="button" data-noti="inbox">查看</button></div><div class="ft"><button type="button" data-noti="clear">清空</button><button type="button" data-noti="inbox">信箱</button><button type="button" data-noti="close">关闭</button><span class="gap">一个月内 <button type="button" data-noti="mute">不再提示</button></span></div></div>',
-      '<div class="hint">Alt+Q 老板键　F10 原版　F5 刷新　Ctrl+C 复制</div>'
+      '<div class="hint">Alt+Q 老板键　F10 原版　Alt+N 夜间　F5 刷新　Ctrl+C 复制</div>'
     ].join('');
     shadow.appendChild(root);
     var parent = document.body || document.documentElement;
@@ -4413,6 +4504,11 @@
     if (onBossKey(e)) return;
     if (state.mode === 'off') return;
     var k = e.key;
+    if (!e.repeat && e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && (e.code === 'KeyN' || k === 'n' || k === 'N')) {
+      consume(e);
+      toggleNight();
+      return;
+    }
     if (k === 'F5' || ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'r' || k === 'R') && !e.shiftKey)) {
       consume(e);
       hardReload();
@@ -4820,8 +4916,9 @@
   function bootHide() {
     if ((localStorage.getItem(LS_MODE) || 'skin') === 'off') return;
     document.documentElement.classList.add('nga-xl-pending');
+    try { if (localStorage.getItem(LS_NIGHT) === '1') document.documentElement.classList.add('nga-xl-night'); } catch (eBootNight) {}
     bootStyle = document.createElement('style');
-    bootStyle.textContent = 'html.nga-xl-pending,html.nga-xl-pending body{background:#fff!important;opacity:0!important;}html.nga-xl-on,html.nga-xl-on body{opacity:1!important;overflow:hidden!important;height:100%!important;margin:0!important;}';
+    bootStyle.textContent = 'html.nga-xl-pending,html.nga-xl-pending body{background:#fff!important;opacity:0!important;}html.nga-xl-pending.nga-xl-night,html.nga-xl-pending.nga-xl-night body{background:#1f1f1e!important;}html.nga-xl-on,html.nga-xl-on body{opacity:1!important;overflow:hidden!important;height:100%!important;margin:0!important;}html.nga-xl-on.nga-xl-night,html.nga-xl-on.nga-xl-night body{background:#1f1f1e!important;}';
     (document.head || document.documentElement).appendChild(bootStyle);
   }
 
