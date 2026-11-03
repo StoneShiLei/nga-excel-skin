@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NGA Excel 摸鱼皮肤
 // @namespace    nga-excel-moyu
-// @version      1.10.44
+// @version      1.10.45
 // @charset      UTF-8
 // @description  把 NGA 伪装成 CW3 联调 Excel。Alt+Q 老板键切到接口核对，F10 显示/恢复原版，Alt+N 夜间模式。
 // @author       moyu
@@ -133,7 +133,7 @@
   CSS += 'table.grid td.rh{width:36px;background:#f8f8f8;text-align:center;color:#666;position:sticky;left:0;z-index:1;font:11px "Segoe UI";padding:0;}';
   CSS += 'table.grid td.sel{box-shadow:inset 0 0 0 2px #217346;background:#e2f0d9 !important;}';
   CSS += 'table.grid tr.selrow td:not(.rh){background:#e2f0d9;}';
-  CSS += 'table.grid td.link{color:#0563c1;text-decoration:underline;cursor:pointer;}';
+  CSS += 'table.grid td.link{color:#35657d;text-decoration:underline;cursor:pointer;}';
   CSS += 'table.grid td.num{text-align:right;font-variant-numeric:tabular-nums;}';
   CSS += 'table.grid td.pct{text-align:right;color:#1f4e79;}';
   CSS += 'table.grid td.neg{color:#c00000;}';
@@ -143,7 +143,7 @@
   CSS += 'table.grid td.title{font-size:var(--xl-fs,12px);font-weight:700;color:#375623;}';
   CSS += 'table.grid td.sub{color:#833c0c;font-style:italic;}';
   CSS += 'table.grid td.warn{background:#fff2cc;}';
-  CSS += 'table.grid tr:nth-child(even) td:not(.rh):not(.head):not(.sec):not(.tot):not(.title):not(.warn){background:#fafafa;}';
+  CSS += 'table.grid tr:nth-child(even):not(.pinrow) td:not(.rh):not(.head):not(.sec):not(.tot):not(.title):not(.warn){background:#fafafa;}';
   CSS += 'table.grid col{min-width:0;} .resz{position:absolute;right:0;top:0;width:8px;height:100%;cursor:col-resize;z-index:30;} .resz:hover{background:rgba(33,115,70,.45);} .gridwrap.colresize,.gridwrap.colresize *{cursor:col-resize!important;} table.grid th[data-col]{cursor:grab;} table.grid th[data-col].dragging{opacity:.4;} table.grid th[data-col].drop-before{box-shadow:inset 3px 0 0 #185c37;} table.grid th[data-col].drop-after{box-shadow:inset -3px 0 0 #185c37;} .gridwrap.colmove,.gridwrap.colmove *{cursor:grabbing!important;}';
   CSS += '.pane{width:400px;min-width:180px;flex:none;position:relative;border-left:1px solid #d4d4d4;display:flex;flex-direction:column;background:#fff;padding-left:8px;}';
   CSS += '.pane.hide{display:none;} .pane-resizer{position:absolute;left:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:8;background:#d2d0ce;border-left:1px solid #c8c6c4;border-right:1px solid #c8c6c4;} .pane-resizer:hover,.pane-resizer.on{background:#217346;}';
@@ -167,7 +167,7 @@
   CSS += 'table.grid td.wrap{position:relative;white-space:normal;height:auto;padding:1px 4px;overflow:hidden;vertical-align:top;}';
   CSS += 'table.grid td.wrap .clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.45;max-height:4.35em;}';
   CSS += 'table.grid tr.wraprow td{height:auto;vertical-align:top;}';
-  CSS += '.pane .body a{color:#0563c1;text-decoration:underline;cursor:pointer;word-break:break-all;} .pane .body .imgls b{display:block;margin:8px 0 4px;font:12px "Microsoft YaHei";color:#185c37;}';
+  CSS += '.pane .body a{color:#35657d;text-decoration:underline;cursor:pointer;word-break:break-all;} .pane .body .imgls b{display:block;margin:8px 0 4px;font:12px "Microsoft YaHei";color:#185c37;}';
   CSS += '.pane .meta{padding:6px 12px;font:11px "Microsoft YaHei";color:#605e5c;border-bottom:1px solid #eee;}';
   CSS += '.compose{border-top:1px solid #d4d4d4;background:#fafafa;padding:8px 10px;flex:none;}';
   CSS += '.compose .chd{font:11px "Microsoft YaHei";color:#185c37;margin:0 0 6px;}';
@@ -197,7 +197,8 @@
   CSS += '#xl-subbtn:hover{border-color:#217346;}';
   CSS += '.subpop{position:absolute;z-index:80;top:24px;left:0;width:220px;max-height:260px;overflow:auto;background:#fff;border:1px solid #c8c6c4;box-shadow:0 6px 16px rgba(0,0,0,.16);padding:4px 8px;}';
   CSS += '.subpop.off{display:none;} .subpop label{display:flex;gap:6px;align-items:center;padding:3px 0;cursor:pointer;}';
-  CSS += 'table.grid td.pinhead{cursor:pointer;background:#e2efda;color:#185c37;font-weight:600;}';
+  CSS += 'table.grid td.pinhead{cursor:pointer;background:#d7e8cc;color:#245233;font-weight:600;}';
+  CSS += 'table.grid tr.pinrow td:not(.rh){background:#d7e8cc;color:#245233;font-weight:600;}';
   CSS += '.navrow .btn[disabled]{opacity:.4;}';
   CSS += '.navrow #xl-title{flex:1;min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#185c37;font-weight:600;}';
   CSS += 'table.grid td a.cella{color:inherit;text-decoration:inherit;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}';
@@ -235,7 +236,7 @@
   CSS += '.app.night{color:#e6e6e6;background:#1f1f1e;color-scheme:dark;}';
   CSS += '.app.night .appbar,.app.night .rtabs,.app.night .formula,.app.night .main,.app.night .gridwrap,.app.night .pane,.app.night .filemenu,.app.night .imgmenu,.app.night .dlgbox,.app.night .xlnoti,.app.night .subpop{background:#1f1f1e;color:#e6e6e6;}';
   CSS += '.app.night .ribbon,.app.night .sheets,.app.night .pane h3,.app.night .xlnoti .hd,.app.night .filebtn:hover,.app.night .filebtn.on,.app.night .fname:hover{background:#2a2a28;}';
-  CSS += '.app.night .navrow,.app.night .compose,.app.night table.grid tr:nth-child(even) td:not(.rh):not(.head):not(.sec):not(.tot):not(.title):not(.warn):not(.pinhead):not(.sel):not(.findhit){background:#262624;}';
+  CSS += '.app.night .navrow,.app.night .compose,.app.night table.grid tr:nth-child(even):not(.pinrow) td:not(.rh):not(.head):not(.sec):not(.tot):not(.title):not(.warn):not(.pinhead):not(.sel):not(.findhit){background:#262624;}';
   CSS += '.app.night .appbar,.app.night .ribbon,.app.night .formula,.app.night .namebox,.app.night .fx,.app.night .pane,.app.night .pane h3,.app.night .navrow,.app.night .compose,.app.night .sheets,.app.night .actrow,.app.night .rg{border-color:#3a3a38;}';
   CSS += '.app.night .filemenu,.app.night .imgmenu,.app.night .dlgbox,.app.night .xlnoti,.app.night .subpop{border-color:#5c5c58;}';
   CSS += '.app.night .filemenu .sep,.app.night .pane .body .votes,.app.night .cmtls,.app.night .poll,.app.night .xlnoti .nrow,.app.night .xlnoti .more,.app.night .xlnoti .ft{border-color:#3a3a38;}';
@@ -255,7 +256,7 @@
   CSS += '.app.night table.grid td.warn,.app.night table.grid td.findhit{background:#3d3420 !important;color:#f3e6b8;}';
   CSS += '.app.night table.grid td.title{color:#9dcea8;}';
   CSS += '.app.night table.grid td.sub{color:#e0a36a;}';
-  CSS += '.app.night table.grid td.link,.app.night .pane .body a{color:#79b8f5;}';
+  CSS += '.app.night table.grid td.link,.app.night .pane .body a{color:#b4c5d1;}';
   CSS += '.app.night table.grid td.pct{color:#9ec0e0;}';
   CSS += '.app.night table.grid td.neg{color:#ff8d8d;}';
   CSS += '.app.night table.grid td.pinhead{background:#24382c;}';
@@ -284,6 +285,7 @@
   CSS += '.app.night .fname:hover{border-color:#3a3a38;}';
   CSS += '.app.night .pane .body .votes b{color:#8a8a88;}';
   CSS += '.app.night option{background:#2a2a28;color:#e6e6e6;}';
+  CSS += '.app.night table.grid tr.pinrow td:not(.rh){background:#3a4336;color:#e4eadc;}';
 
   var COL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var state = {
@@ -3341,11 +3343,13 @@
     for (var r = 1; r <= maxR; r++) {
       var rowSel = r === state.selR ? ' selrow' : '';
       var wrapRow = false;
+      var pinRow = false;
       for (var cx = 1; cx <= COLS; cx++) {
         var cc = state.cells[r] && state.cells[r][cx];
         if (cc && cc.k === 'wrap') wrapRow = true;
+        if (cc && cc.k === 'pinhead') pinRow = true;
       }
-      html.push('<tr class="' + rowSel + (wrapRow ? ' wraprow' : '') + '"><td class="rh">' + r + '</td>');
+      html.push('<tr class="' + rowSel + (wrapRow ? ' wraprow' : '') + (pinRow ? ' pinrow' : '') + '"><td class="rh">' + r + '</td>');
       for (var c2 = 1; c2 <= COLS; c2++) {
         var lc = visToLog(c2);
         var cell = (state.cells[r] && state.cells[r][lc]) || { t: '' };
